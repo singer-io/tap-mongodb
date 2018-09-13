@@ -20,5 +20,6 @@ setup(name='tap-mongodb',
           [console_scripts]
           tap-mongodb=tap_mongodb:main
       ''',
-      packages=['tap_mongodb'],
+      packages=['tap_mongodb', 'tap_mongodb.sync_strategies'],
+
 )

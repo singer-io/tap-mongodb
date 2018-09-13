@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from bson import objectid
 import copy
 import json
@@ -8,6 +9,8 @@ from singer import metadata, metrics, utils
 
 import sys
 import time
+
+import tap_mongodb.sync_strategies.full_table as full_table
 
 LOGGER = singer.get_logger()
 
@@ -69,22 +72,6 @@ def get_stream_version(tap_stream_id, state):
         stream_version = int(time.time() * 1000)
 
     return stream_version
-
-
-def row_to_singer_record(stream, row, version, time_extracted):
-    row_to_persist = {}
-
-    for column_name, value in row.items():
-        if isinstance(value, objectid.ObjectId):
-            row_to_persist[column_name] = str(value)
-        else:
-            row_to_persist[column_name] = value
-
-    return singer.RecordMessage(
-        stream=stream['stream'],
-        record=row_to_persist,
-        version=version,
-        time_extracted=time_extracted)
 
 
 def is_stream_selected(stream):
@@ -154,40 +141,6 @@ def sync_binlog_streams(client, streams, state):
     1
 
 
-def do_sync_full_table(client, stream, state, columns):
-    mdata = metadata.to_map(stream['metadata'])
-    stream_metadata = mdata.get(())
-
-    db = client[stream_metadata['database-name']]
-    collection = db[stream['stream']]
-
-    singer.write_message(singer.SchemaMessage(
-        stream=stream['stream'],
-        schema=stream['schema'],
-        key_properties=['_id']))
-
-    with metrics.record_counter(None) as counter:
-        with collection.find() as cursor:
-            rows_saved = 0
-
-            time_extracted = utils.now()
-
-            for row in cursor:
-                rows_saved += 1
-                whitelisted_row = {k:v for k,v in row.items() if k in columns}
-                record_message = row_to_singer_record(stream,
-                                                      whitelisted_row,
-                                                      get_stream_version(stream['tap_stream_id'], state),
-                                                      time_extracted)
-
-                singer.write_message(record_message)
-
-                if rows_saved % 1000 == 0:
-                    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
-
-    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
-
-
 def sync_non_binlog_streams(client, streams, state):
     for stream in streams:
         md_map = metadata.to_map(stream['metadata'])
@@ -217,7 +170,13 @@ def sync_non_binlog_streams(client, streams, state):
             if replication_method == 'LOG_BASED':
                 do_sync_historical_binlog(client, stream, state, columns)
             elif replication_method == 'FULL_TABLE':
-                do_sync_full_table(client, stream, state, columns)
+                stream_version = get_stream_version(stream['tap_stream_id'], state)
+                full_table.sync_table(client, stream, state, stream_version, columns)
+
+                state = singer.write_bookmark(state,
+                                              stream['tap_stream_id'],
+                                              'initial_full_table_complete',
+                                              True)
             else:
                 raise Exception("only LOG_BASED and FULL TABLE replication methods are supported")
 
