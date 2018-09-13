@@ -104,3 +104,4 @@ ENV/
 .tramp_history
 
 config.json
+state.json

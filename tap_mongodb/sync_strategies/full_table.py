@@ -115,7 +115,7 @@ def sync_table(client, stream, state, stream_version, columns):
                     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
     # clear max pk value and last pk fetched upon successful sync
-    singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_values')
+    singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
     singer.clear_bookmark(state, stream['tap_stream_id'], 'last_id_fetched')
 
     singer.write_message(activate_version_message)
