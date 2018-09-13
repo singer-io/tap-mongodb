@@ -11,6 +11,7 @@ import time
 
 LOGGER = singer.get_logger()
 
+
 REQUIRED_CONFIG_KEYS = [
     'host',
     'port',
@@ -21,6 +22,7 @@ REQUIRED_CONFIG_KEYS = [
 
 IGNORE_DBS = ['admin', 'system', 'local']
 IGNORE_COLLECTIONS = ['system.indexes']
+
 
 def produce_collection_schema(collection):
     collection_name = collection.name
@@ -40,6 +42,7 @@ def produce_collection_schema(collection):
         }
     }
 
+
 def do_discover(client):
     database_names = client.list_database_names()
 
@@ -58,6 +61,7 @@ def do_discover(client):
 
     json.dump({'streams' : streams}, sys.stdout, indent=2)
 
+
 def get_stream_version(tap_stream_id, state):
     stream_version = singer.get_bookmark(state, tap_stream_id, 'version')
 
@@ -66,12 +70,10 @@ def get_stream_version(tap_stream_id, state):
 
     return stream_version
 
+
 def row_to_singer_record(stream, row, version, time_extracted):
     row_to_persist = {}
 
-    import pdb
-    pdb.set_trace
-    1 + 1
     for column_name, value in row.items():
         if isinstance(value, objectid.ObjectId):
             row_to_persist[column_name] = str(value)
@@ -82,59 +84,156 @@ def row_to_singer_record(stream, row, version, time_extracted):
         stream=stream['stream'],
         record=row_to_persist,
         version=version,
-        time_extracted=time_extracted
-    )
+        time_extracted=time_extracted)
 
 
-def do_sync(client, properties, state):
-    streams = properties['streams']
+def is_stream_selected(stream):
+    mdata = metadata.to_map(stream['metadata'])
+    stream_metadata = mdata.get(())
 
+    is_selected = stream_metadata.get('selected')
+
+    return is_selected == True
+
+
+def get_database_name(stream):
+    md_map = metadata.to_map(stream['metadata'])
+
+    return md_map.get((), {}).get('database-name')
+
+def get_non_binlog_streams(client, streams, state):
+    selected_streams = list(filter(lambda s: is_stream_selected(s), streams))
+
+    streams_with_state = []
+    streams_without_state = []
+
+    for stream in selected_streams:
+        stream_metadata = metadata.to_map(stream['metadata'])
+        replication_method = stream_metadata.get((), {}).get('replication-method')
+        stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
+
+        if not stream_state:
+            if replication_method == 'LOG_BASED':
+                LOGGER.info("LOG_BASED stream %s requires full historical sync", stream['tap_stream_id'])
+
+            streams_without_state.append(stream)
+        elif stream_state and replication_method == 'LOG_BASED' and binlog_stream_requires_historical(stream, state):
+            LOGGER.info("LOG_BASED stream %s will resume its historical sync", stream['tap_stream_id'])
+            streams_with_state.append(stream)
+        elif stream_state and replication_method != 'LOG_BASED':
+            streams_with_state.append(stream)
+
+    # If the state says we were in the middle of processing a stream, skip
+    # to that stream. Then process streams without prior state and finally
+    # move onto streams with state (i.e. have been synced in the past)
+    currently_syncing = singer.get_currently_syncing(state)
+
+    # prioritize streams that have not been processed
+    ordered_streams = streams_without_state + streams_with_state
+
+    if currently_syncing:
+        currently_syncing_stream = list(filter(
+            lambda s: s.tap_stream_id == currently_syncing and is_valid_currently_syncing_stream(s, state),
+            streams_with_state))
+
+        non_currently_syncing_streams = list(filter(lambda s: s.tap_stream_id != currently_syncing, ordered_streams))
+
+        streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
+    else:
+        # prioritize streams that have not been processed
+        streams_to_sync = ordered_streams
+
+    return streams_to_sync
+
+
+def get_binlog_streams(client, streams, state):
+    1
+
+
+def sync_binlog_streams(client, streams, state):
+    1
+
+
+def do_sync_full_table(client, stream, state, columns):
+    mdata = metadata.to_map(stream['metadata'])
+    stream_metadata = mdata.get(())
+
+    db = client[stream_metadata['database-name']]
+    collection = db[stream['stream']]
+
+    singer.write_message(singer.SchemaMessage(
+        stream=stream['stream'],
+        schema=stream['schema'],
+        key_properties=['_id']))
+
+    with metrics.record_counter(None) as counter:
+        with collection.find() as cursor:
+            rows_saved = 0
+
+            time_extracted = utils.now()
+
+            for row in cursor:
+                rows_saved += 1
+                whitelisted_row = {k:v for k,v in row.items() if k in columns}
+                record_message = row_to_singer_record(stream,
+                                                      whitelisted_row,
+                                                      get_stream_version(stream['tap_stream_id'], state),
+                                                      time_extracted)
+
+                singer.write_message(record_message)
+
+                if rows_saved % 1000 == 0:
+                    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+
+def sync_non_binlog_streams(client, streams, state):
     for stream in streams:
-        mdata = metadata.to_map(stream['metadata'])
-        stream_metadata = mdata.get(())
-
+        md_map = metadata.to_map(stream['metadata'])
+        stream_metadata = md_map.get(())
         select_clause = stream_metadata.get('custom-select-clause')
 
-        if not stream_metadata['selected']:
-            LOGGER.info("Skipping stream {} since it was not selected.".format(stream['tap_stream_id']))
-            continue
-
         if not select_clause:
-            LOGGER.info("Skipping stream {} since no select clause was provided.".format(stream['tap_stream_id']))
+            LOGGER.warning('There are no columns selected for stream %s, skipping it.', stream['tap_stream_stream'])
             continue
 
         columns = [c.strip(' ') for c in select_clause.split(',')]
         columns.append('_id')
 
-        db = client[stream_metadata['database-name']]
-        collection = db[stream['stream']]
+        state = singer.set_currently_syncing(state, stream['tap_stream_id'])
 
-        singer.write_message(singer.SchemaMessage(
-            stream=stream['stream'],
-            schema=stream['schema'],
-            key_properties=['_id']
-        ))
+        # Emit a state message to indicate that we've started this stream
+        singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
-        with metrics.record_counter(None) as counter:
-            with collection.find() as cursor:
-                rows_saved = 0
+        replication_method = stream_metadata.get('replication-method')
 
-                time_extracted = utils.now()
+        database_name = get_database_name(stream)
 
-                for row in cursor:
-                    rows_saved += 1
-                    whitelisted_row = {k:v for k,v in row.items() if k in columns}
-                    record_message = row_to_singer_record(stream,
-                                                          whitelisted_row,
-                                                          get_stream_version(stream['tap_stream_id'], state),
-                                                          time_extracted)
+        with metrics.job_timer('sync_table') as timer:
+            timer.tags['database'] = database_name
+            timer.tags['table'] = stream['table_name']
 
-                    singer.write_message(record_message)
+            if replication_method == 'LOG_BASED':
+                do_sync_historical_binlog(client, stream, state, columns)
+            elif replication_method == 'FULL_TABLE':
+                do_sync_full_table(client, stream, state, columns)
+            else:
+                raise Exception("only LOG_BASED and FULL TABLE replication methods are supported")
 
-                    if rows_saved % 1000 == 0:
-                        singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+    state = singer.set_currently_syncing(state, None)
 
-                singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+
+def do_sync(client, properties, state):
+    all_streams = properties['streams']
+    non_binlog_streams = get_non_binlog_streams(client, all_streams, state)
+    binlog_streams = get_binlog_streams(client, all_streams, state)
+
+    sync_non_binlog_streams(client, non_binlog_streams, state)
+    sync_binlog_streams(client, binlog_streams, state)
+
 
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
@@ -153,9 +252,7 @@ def main_impl():
         do_sync(client, args.properties, state)
     else:
         LOGGER.info("No properties were selected")
-    # db = client.test
-    # foo = db.foo
-    # print(foo.find_one())
+
 
 def main():
     try:
