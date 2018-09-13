@@ -29,22 +29,6 @@ def get_max_id_value(collection):
     return str(row['_id'])
 
 
-def row_to_singer_record(stream, row, version, time_extracted):
-    row_to_persist = {}
-
-    for column_name, value in row.items():
-        if isinstance(value, objectid.ObjectId):
-            row_to_persist[column_name] = str(value)
-        else:
-            row_to_persist[column_name] = value
-
-    return singer.RecordMessage(
-        stream=stream['stream'],
-        record=row_to_persist,
-        version=version,
-        time_extracted=time_extracted)
-
-
 def sync_table(client, stream, state, stream_version, columns):
     common.whitelist_bookmark_keys(generate_bookmark_keys(stream), stream['tap_stream_id'], state)
 
@@ -88,8 +72,8 @@ def sync_table(client, stream, state, stream_version, columns):
         find_filter['$gt': objectid.ObjectId(last_id_fetched)]
 
     with metrics.record_counter(None) as counter:
-        with collection.find() as cursor:
-            collection.find({'_id': find_filter}, sort=[("_id", pymongo.DESCENDING)])
+        with collection.find({'_id': find_filter},
+                             sort=[("_id", pymongo.DESCENDING)]) as cursor:
             rows_saved = 0
 
             time_extracted = utils.now()
@@ -98,10 +82,10 @@ def sync_table(client, stream, state, stream_version, columns):
                 rows_saved += 1
 
                 whitelisted_row = {k:v for k,v in row.items() if k in columns}
-                record_message = row_to_singer_record(stream,
-                                                      whitelisted_row,
-                                                      stream_version,
-                                                      time_extracted)
+                record_message = common.row_to_singer_record(stream,
+                                                             whitelisted_row,
+                                                             stream_version,
+                                                             time_extracted)
 
                 singer.write_message(record_message)
 
