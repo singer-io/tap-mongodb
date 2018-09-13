@@ -4,6 +4,8 @@ import copy
 import pymongo
 import singer
 from singer import metadata, metrics, utils
+import tap_mongodb.sync_strategies.common as common
+import tap_mongodb.sync_strategies.oplog as oplog
 
 LOGGER = singer.get_logger()
 
@@ -17,7 +19,7 @@ def generate_bookmark_keys(stream):
     if replication_method == 'FULL_TABLE':
         bookmark_keys = base_bookmark_keys
     else:
-        bookmark_keys = base_bookmark_keys.union(binlog.BOOKMARK_KEYS)
+        bookmark_keys = base_bookmark_keys.union(oplog.BOOKMARK_KEYS)
 
     return bookmark_keys
 
@@ -44,16 +46,13 @@ def row_to_singer_record(stream, row, version, time_extracted):
 
 
 def sync_table(client, stream, state, stream_version, columns):
+    common.whitelist_bookmark_keys(generate_bookmark_keys(stream), stream['tap_stream_id'], state)
+
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
 
     db = client[stream_metadata['database-name']]
     collection = db[stream['stream']]
-
-    singer.write_message(singer.SchemaMessage(
-        stream=stream['stream'],
-        schema=stream['schema'],
-        key_properties=['_id']))
 
     activate_version_message = singer.ActivateVersionMessage(
         stream=stream['stream'],
@@ -97,6 +96,7 @@ def sync_table(client, stream, state, stream_version, columns):
 
             for row in cursor:
                 rows_saved += 1
+
                 whitelisted_row = {k:v for k,v in row.items() if k in columns}
                 record_message = row_to_singer_record(stream,
                                                       whitelisted_row,

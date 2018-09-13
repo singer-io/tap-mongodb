@@ -11,6 +11,7 @@ import sys
 import time
 
 import tap_mongodb.sync_strategies.full_table as full_table
+import tap_mongodb.sync_strategies.oplog as oplog
 
 LOGGER = singer.get_logger()
 
@@ -141,6 +142,56 @@ def sync_binlog_streams(client, streams, state):
     1
 
 
+def write_schema_message(stream):
+    singer.write_message(singer.SchemaMessage(
+        stream=stream['stream'],
+        schema=stream['schema'],
+        key_properties=['_id']))
+
+
+def do_sync_historical_oplog(client, stream, state, columns):
+    oplog_h = singer.get_bookmark(state,
+                                  stream['tap_stream_id'],
+                                  'oplog_h')
+
+    max_id_value = singer.get_bookmark(state,
+                                       stream['tap_stream_id'],
+                                       'max_id_value')
+
+    last_id_fetched = singer.get_bookmark(state,
+                                          stream['tap_stream_id'],
+                                          'last_id_fetched')
+
+    write_schema_message(stream)
+
+    stream_version = get_stream_version(stream['tap_stream_id'], state)
+
+    if oplog_h and max_id_value:
+        LOGGER.info("Resuming initial full table sync for LOG_BASED stream %s", stream['tap_stream_id'])
+        full_table.sync_table(client, stream, state, stream_version, columns)
+
+    else:
+        LOGGER.info("Performing initial full table sync for LOG_BASED stream %s", stream['tap_stream_id'])
+
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'initial_binlog_complete',
+                                      False)
+
+        current_oplog_h = oplog.get_latest_h(client)
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'version',
+                                      stream_version)
+
+        # We must save oplog h value  across FULL_TABLE syncs
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'oplog_h',
+                                      current_oplog_h)
+
+        full_table.sync_table(client, stream, state, stream_version, columns)
+
 def sync_non_binlog_streams(client, streams, state):
     for stream in streams:
         md_map = metadata.to_map(stream['metadata'])
@@ -168,8 +219,9 @@ def sync_non_binlog_streams(client, streams, state):
             timer.tags['table'] = stream['table_name']
 
             if replication_method == 'LOG_BASED':
-                do_sync_historical_binlog(client, stream, state, columns)
+                do_sync_historical_oplog(client, stream, state, columns)
             elif replication_method == 'FULL_TABLE':
+                write_schema_message(stream)
                 stream_version = get_stream_version(stream['tap_stream_id'], state)
                 full_table.sync_table(client, stream, state, stream_version, columns)
 
