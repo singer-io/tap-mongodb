@@ -113,8 +113,11 @@ def sync_oplog_stream(client, streams, state):
                     elif row_op == 'd':
                         tap_stream_id = generate_tap_stream_id_for_row(row)
                         stream_map_entry = streams_map[tap_stream_id]
-                        whitelisted_row = {k:v for k,v in row['o'].items() if k in stream_map_entry['columns']}
 
+                        # Delete ops only contain the _id of the row deleted
+                        whitelisted_row = {column_name:None for column_name in stream_map_entry['columns']}
+
+                        whitelisted_row['_id'] = row['o']['_id']
                         whitelisted_row[SDC_DELETED_AT] = row['ts']
 
                         record_message = common.row_to_singer_record(stream_map_entry['stream'],
