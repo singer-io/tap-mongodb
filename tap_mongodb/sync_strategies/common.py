@@ -19,19 +19,11 @@ def get_stream_version(tap_stream_id, state):
     return stream_version
 
 
-def transform_list(list_value):
-    return list(map(lambda v: transform_value(v), list_value))
-
-
-def transform_dict(dict_value):
-    return {k:transform_value(v) for k,v in dict_value.items()}
-
-
 def transform_value(value):
     if isinstance(value, list):
-        return transform_list(value)
+        return list(map(lambda v: transform_value(v), value))
     elif isinstance(value, dict):
-        return transform_dict(value)
+        return {k:transform_value(v) for k,v in value.items()}
     elif isinstance(value, objectid.ObjectId):
         return str(value)
     elif isinstance(value, timestamp.Timestamp):
