@@ -9,6 +9,7 @@ from singer import metadata, metrics, utils
 import sys
 import time
 
+import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
 import tap_mongodb.sync_strategies.oplog as oplog
 
