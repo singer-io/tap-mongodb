@@ -19,16 +19,29 @@ def get_stream_version(tap_stream_id, state):
     return stream_version
 
 
-def row_to_singer_record(stream, row, version, time_extracted):
-    row_to_persist = {}
+def transform_list(list_value):
+    return list(map(lambda v: transform_value(v), list_value))
 
-    for column_name, value in row.items():
-        if isinstance(value, objectid.ObjectId):
-            row_to_persist[column_name] = str(value)
-        elif isinstance(value, timestamp.Timestamp):
-            row_to_persist[column_name] = value.as_datetime().isoformat()
-        else:
-            row_to_persist[column_name] = value
+
+def transform_dict(dict_value):
+    return {k:transform_value(v) for k,v in dict_value.items()}
+
+
+def transform_value(value):
+    if isinstance(value, list):
+        return transform_list(value)
+    elif isinstance(value, dict):
+        return transform_dict(value)
+    elif isinstance(value, objectid.ObjectId):
+        return str(value)
+    elif isinstance(value, timestamp.Timestamp):
+        return value.as_datetime().isoformat()
+    else:
+        return value
+
+
+def row_to_singer_record(stream, row, version, time_extracted):
+    row_to_persist = {k:transform_value(v) for k,v in row.items()}
 
     return singer.RecordMessage(
         stream=stream['stream'],
