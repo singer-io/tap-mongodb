@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
-from bson import objectid, timestamp
+import datetime
+
+from bson import objectid, timestamp, datetime as bson_datetime
 import singer
+from singer import utils
+
+import pytz
+import time
+import tzlocal
 
 def whitelist_bookmark_keys(bookmark_key_set, tap_stream_id, state):
     for bk in [non_whitelisted_bookmark_key
@@ -26,8 +33,14 @@ def transform_value(value):
         return {k:transform_value(v) for k,v in value.items()}
     elif isinstance(value, objectid.ObjectId):
         return str(value)
+    elif isinstance(value, bson_datetime.datetime):
+        timezone = tzlocal.get_localzone()
+        local_datetime = timezone.localize(value)
+        utc_datetime = local_datetime.astimezone(pytz.UTC)
+
+        return utils.strftime(utc_datetime)
     elif isinstance(value, timestamp.Timestamp):
-        return value.as_datetime().isoformat()
+        return utils.strftime(value.as_datetime())
     else:
         return value
 

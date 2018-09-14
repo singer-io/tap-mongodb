@@ -222,8 +222,7 @@ def do_sync_historical_oplog(client, stream, state, columns):
         LOGGER.info("Performing initial full table sync for LOG_BASED stream %s", stream['tap_stream_id'])
 
         current_oplog_ts = oplog.get_latest_ts(client)
-        import pdb
-        pdb.set_trace()
+
         state = singer.write_bookmark(state,
                                       stream['tap_stream_id'],
                                       'version',
