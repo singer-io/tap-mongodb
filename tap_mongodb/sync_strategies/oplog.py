@@ -78,22 +78,24 @@ def sync_oplog_stream(client, streams, state):
                         for k,v in state.get('bookmarks', {}).items()
                         if streams_map.get(k)])
 
+        LOGGER.info("Starting oplog replication with ts=%s", oplog_ts)
+
         time_extracted = utils.now()
 
         rows_saved = 0
-        events_skipped = 0
+        ops_skipped = 0
 
         with client.local.oplog.rs.find({'ts': {'$gt': oplog_ts}},
                                         oplog_replay=True) as cursor:
             for row in cursor:
                 if row['op'] == 'n':
-                    LOGGER.info('Skipping noop event')
+                    LOGGER.info('Skipping noop op')
                 elif not streams_map.get(generate_tap_stream_id_for_row(row)):
-                    events_skipped = events_skipped + 1
+                    ops_skipped = ops_skipped + 1
 
-                    if events_skipped % UPDATE_BOOKMARK_PERIOD == 0:
-                        LOGGER.info("Skipped %s events so far as they were not for selected tables; %s rows extracted",
-                                    events_skipped,
+                    if ops_skipped % UPDATE_BOOKMARK_PERIOD == 0:
+                        LOGGER.info("Skipped %s ops so far as they were not for selected tables; %s rows extracted",
+                                    ops_skipped,
                                     rows_saved)
                 else:
                     row_op = row['op']
@@ -121,7 +123,7 @@ def sync_oplog_stream(client, streams, state):
                                                                      time_extracted)
                         singer.write_message(record_message)
                     else:
-                        LOGGER.info("Skipping event for table %s as it is not an INSERT, UPDATE, or DELETE", row['ns'])
+                        LOGGER.info("Skipping op for table %s as it is not an INSERT, UPDATE, or DELETE", row['ns'])
 
                 state = update_bookmarks(state,
                                          streams_map,

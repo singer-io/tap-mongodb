@@ -105,3 +105,4 @@ ENV/
 
 config.json
 state.json
+properties.json

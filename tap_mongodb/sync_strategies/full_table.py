@@ -35,7 +35,9 @@ def sync_table(client, stream, state, stream_version, columns):
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
 
-    db = client[stream_metadata['database-name']]
+    database_name = stream_metadata['database-name']
+
+    db = client[database_name]
     collection = db[stream['stream']]
 
     activate_version_message = singer.ActivateVersionMessage(
@@ -70,6 +72,8 @@ def sync_table(client, stream, state, stream_version, columns):
 
     if last_id_fetched:
         find_filter['$gt': objectid.ObjectId(last_id_fetched)]
+
+    LOGGER.info("Starting full table replication for table {}.{}".format(database_name, stream['stream']))
 
     with metrics.record_counter(None) as counter:
         with collection.find({'_id': find_filter},
