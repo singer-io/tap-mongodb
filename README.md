@@ -6,13 +6,12 @@ This is a [Singer](https://singer.io) tap that produces JSON-formatted data foll
 
 # Quickstart
 
-
 ## Install the tap
 
 ```bash
-git clone git@github.com:stitchdata/tap-mongodb.git # Clone this Repo
-mkvirtualenv -p python3 tap-mongodb # Create a virtualenv
-source tap-mongodb/bin/activate # Activate the virtualenv
+git clone git@github.com:singer-io/tap-mongodb.git # Clone this Repo
+mkvirtualenv -p python3 tap-mongodb                # Create a virtualenv
+source tap-mongodb/bin/activate                    # Activate the virtualenv
 pip install -e .
 ```
 
@@ -31,7 +30,7 @@ pip install -e .
 ## Run the tap in Discovery Mode
 
 ```
-tap-mongodb --config config.json --discover # Should dump a Catalog to sdtout
+tap-mongodb --config config.json --discover                # Should dump a Catalog to sdtout
 tap-mongodb --config config.json --discover > catalog.json # Capture the Catalog
 ```
 
