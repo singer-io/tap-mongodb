@@ -18,9 +18,7 @@ LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = [
     'host',
-    'port',
-    'user',
-    'password'
+    'port'
 ]
 
 
@@ -301,8 +299,8 @@ def main_impl():
 
     client =  MongoClient(host=config['host'],
                           port=int(config['port']),
-                          username=config['user'],
-                          password=config['password'],
+                          username=config.get('user', None),
+                          password=config.get('password', None),
                           authSource=config['dbname'])
 
     if args.discover:
