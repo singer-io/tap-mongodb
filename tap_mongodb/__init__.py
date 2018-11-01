@@ -279,7 +279,7 @@ def sync_non_oplog_streams(client, streams, state):
                                               'initial_full_table_complete',
                                               True)
             else:
-                raise Exception("only LOG_BASED and FULL TABLE replication methods are supported")
+                raise Exception(f"only LOG_BASED and FULL TABLE replication methods are supported (you passed {replication_method})")
 
     state = singer.set_currently_syncing(state, None)
 
