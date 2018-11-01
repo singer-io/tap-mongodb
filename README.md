@@ -47,7 +47,7 @@ Each entry under the Catalog's "stream" key will need the following metadata:
         "breadcrumb": [],
         "metadata": {
           "selected": true,
-          "replication_method": "FULL_TABLE",
+          "replication-method": "FULL_TABLE",
           "custom-select-clause": "name,age,birthday,address,city,state,zip"
         }
       }]
@@ -58,7 +58,7 @@ Each entry under the Catalog's "stream" key will need the following metadata:
 
 A stream needs top level (no breadcrumb) metadata that describes the following:
 
-* replication_method
+* replication-method
   * LOG_BASED: will use Mongo's Oplog
   * FULL_TABLE: will sync the entire table on every tap run
 * custom-select-clause

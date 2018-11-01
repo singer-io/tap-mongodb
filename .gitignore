@@ -106,3 +106,4 @@ ENV/
 config.json
 state.json
 properties.json
+catalog.json
