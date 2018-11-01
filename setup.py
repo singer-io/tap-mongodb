@@ -12,7 +12,7 @@ setup(name='tap-mongodb',
       install_requires=[
           'attrs==16.3.0',
           'pendulum==1.2.0',
-          'singer-python==5.2.0',
+          'singer-python==5.3.3',
           'backoff==1.3.2',
           'pymongo==3.7.1'
       ],
