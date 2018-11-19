@@ -2,7 +2,11 @@
 
 This is a [Singer](https://singer.io) tap that produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md) from a MongoDB source.
 
-**This is a WIP**
+**This is a Proof of Concept and may have limited utility.**
+
+The Singer.io core team welcomes proposals regarding how this tap should
+work, especially in terms of filling in known limitations, but no promises
+are made in terms of timeliness of responses.
 
 # Quickstart
 
