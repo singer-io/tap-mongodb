@@ -10,7 +10,7 @@ import pymongo # requires dnspython package as well
 
 
 host=['stitch-shard-00-00-upwjw.mongodb.net',
-       'stitch-shard-00-01-upwjw.mongodb.net',
+      'stitch-shard-00-01-upwjw.mongodb.net',
       'stitch-shard-00-02-upwjw.mongodb.net']
 username = 'harrison'
 password = '2t4FNGc$NrVFF3pRrJc&Vvf2ycpDorMg'
@@ -44,46 +44,46 @@ sources_team_members_coll.insert_many([{"name": "Jacob", "membersince": 2019},
                                        {"name": "Brian", "membersince": 2014},
                                        {"name": "Harrison", "membersince": 2018}])
 
-# List dbs
+
 print("\nShowing Databases...")
 print(client.list_database_names())
 
-# List collections in spike_db
 print("\nShowing collections in db=spike_db...")
 print(spike_db.list_collection_names())
 
-# Select all  documents from collection
 print("\nShowing all documents in sources_team_members_coll...")
 for doc in sources_team_members_coll.find():
     print(doc)
 
-# Find documents where membersince> 2016
 print("\nShowing documents where membersince > 2016...")
 for doc in sources_team_members_coll.find({"membersince": {"$gt": 2016}}):
     print(doc)
 
-# Update Nick's membersince year to 2017
+print("\nShow only name and id...")
+for doc in sources_team_members_coll.find({}, {"name": 1}):
+    print(doc)
+
+print("\nShow only name...")
+for doc in sources_team_members_coll.find({}, {"name": 1, "_id": 0}):
+    print(doc)
+
 print("\nUpdating Nick's membersince from 2017->2018...")
 update_result = sources_team_members_coll.update_one({"name": "Nick"}, {"$set": {"membersince": 2017}})
 for doc in sources_team_members_coll.find():
     print(doc)
-    
-# Update documents in collection
+
 print("\nUpdating to add team field to all documents...")
 update_result = sources_team_members_coll.update_many({}, {"$set": {"team": "sources"}})
 for doc in sources_team_members_coll.find():
     print(doc)
 
-# Delete document in collection
 print("\nRemoving Harrison because he is NOT part of the team...")
 delete_result = sources_team_members_coll.delete_many({"name": "Harrison"})
 for doc in sources_team_members_coll.find():
     print(doc)
 
-# Delete collection and database
-# Removing the collection also removes the database since it is the only collection in the db
 print("\nDeleting the collection and database...")
 sources_team_members_coll.drop()
+
 print("\nShowing Databases...")
 print(client.list_database_names())
-
