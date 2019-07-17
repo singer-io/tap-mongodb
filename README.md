@@ -78,4 +78,4 @@ The tap will write bookmarks to stdout which can be captured and passed as an op
 
 ---
 
-Copyright &copy; 2018 Stitch
+Copyright &copy; 2019 Stitch
