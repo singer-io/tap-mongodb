@@ -1,19 +1,19 @@
 import pymongo # requires dnspython package as well
-
+import sys
 
 #------------------------ Setup Client ------------------------
+#username = sys.argv[1]
+#password = sys.argv[2]
 #host = 'stitch-upwjw.mongodb.net'
-#username = 'harrison'
-#password = '2t4FNGc$NrVFF3pRrJc&Vvf2ycpDorMg'
 # connection_string = "mongodb+srv://{}:{}@{}/test".format(username, password, host)
 # client = pymongo.MongoClient(connection_string)
 
 
+username = sys.argv[1]
+password = sys.argv[2]
 host=['stitch-shard-00-00-upwjw.mongodb.net',
       'stitch-shard-00-01-upwjw.mongodb.net',
       'stitch-shard-00-02-upwjw.mongodb.net']
-username = 'harrison'
-password = '2t4FNGc$NrVFF3pRrJc&Vvf2ycpDorMg'
 ssl = True # client must have ssl=True to connect to atlas cluster
 
 client = pymongo.MongoClient(host=host, username=username, password=password, port=27017, ssl=True)
