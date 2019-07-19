@@ -17,6 +17,8 @@ pymongo version 3.7/3.8 supports
 - 3.0
 - 2.6
 
+**We believe this means that any major differences in the client mongo version should be handled by pymongo**
+
 ## Replica sets and sharded clusters
 - A replica set is a cluster of MongoDB servers that implements
   replication and automated failover. MongoDB’s recommended replication
