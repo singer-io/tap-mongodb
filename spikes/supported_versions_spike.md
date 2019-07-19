@@ -38,7 +38,7 @@ pymongo version 3.7/3.8 supports
 ## Mongo-as-a-service mLab? 
  - mLab is "not accepting new customers" and migrating existing ones to
    Atlas (what we test with)
- - It looks like there was no differenece though in the way you connected
+ - It looks like there was no difference though in the way you connected
    to it via shell/driver
  
 ## Test Instance versions
