@@ -2,22 +2,33 @@ import pymongo # requires dnspython package as well
 import sys
 
 #------------------------ Setup Client ------------------------
+
+#----- Atlas using connection string -----
 #username = sys.argv[1]
 #password = sys.argv[2]
 #host = 'stitch-upwjw.mongodb.net'
 # connection_string = "mongodb+srv://{}:{}@{}/test".format(username, password, host)
 # client = pymongo.MongoClient(connection_string)
 
+#----- Atlas using connection props -----
+# username = sys.argv[1]
+# password = sys.argv[2]
+# host=['stitch-shard-00-00-upwjw.mongodb.net',
+#       'stitch-shard-00-01-upwjw.mongodb.net',
+#       'stitch-shard-00-02-upwjw.mongodb.net']
+# ssl = True # client must have ssl=True to connect to atlas cluster
+# client = pymongo.MongoClient(host=host, username=username, password=password, port=27017, ssl=True)
 
+#------ Local mongo server ------
 username = sys.argv[1]
 password = sys.argv[2]
-host=['stitch-shard-00-00-upwjw.mongodb.net',
-      'stitch-shard-00-01-upwjw.mongodb.net',
-      'stitch-shard-00-02-upwjw.mongodb.net']
-ssl = True # client must have ssl=True to connect to atlas cluster
+host= '127.0.0.1'
+auth_source = 'test'
+ssl = False
+client = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
 
-client = pymongo.MongoClient(host=host, username=username, password=password, port=27017, ssl=True)
-test_db = client.test_db
+# Get connection Info
+print("\nConnecting to MongoDB version " + client.server_info()['version'])
 
 # List dbs
 print("\nShowing Initial Databases...")
