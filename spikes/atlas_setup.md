@@ -1,6 +1,4 @@
-# Dev & Circle MongoDB Instance Spike
-
-## Atlas
+# MongoDB Atlas Spike
 Atlas is MongoDB's cloud service that can be hosted on aws. We already have an Atlas account that can be accessed by:
 1. Go to https://cloud.mongodb.com
 2. Creds in 1pass
