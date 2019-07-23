@@ -35,10 +35,19 @@ db.createUser(
 
 ### Enable Oplog
 1. Edit `/etc/mongod.conf` and add a replciation set:
+
+Assume superuser:
+```
+sudo su
+```
+
+Uncomment replication and add `replicationSetName` (indented) in `/etc/mongod.conf`:
 ```
 replication:
   replSetName: rs0
 ```
+
+Return to normal user with `C-d`
 
 2. Restart mongod and pass it --config flag:
 ```
@@ -73,12 +82,11 @@ use local
 
 view oplog rows
 ```
-db.oplog.rs0.find()
+db.oplog.rs.find()
 ```
 
 ### Connect with shell
 Can now connect to Mongo via the mongo shell with:
 ```
-mongo --host localhost --port 27017 --authenticationDatabase admin --username <username> --password <password>
+mongo --host localhost --port 27017 --authenticationDatabase <db_name> --username <username> --password <password>
 ```
-

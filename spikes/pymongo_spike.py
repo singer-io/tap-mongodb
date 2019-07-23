@@ -93,6 +93,18 @@ delete_result = sources_team_members_coll.delete_many({"name": "Harrison"})
 for doc in sources_team_members_coll.find():
     print(doc)
 
+oplog = client.local.oplog.rs
+first = oplog.find().sort('$natural', pymongo.ASCENDING).limit(-1).next()
+ts = first['ts']
+
+print('\nPrinting oplog rows...')
+with client.local.oplog.rs.find({'ts': {'$gt': ts}},
+                                oplog_replay=True) as cursor:
+    for row in cursor:
+        if row['op'] in ['i', 'u', 'd']:
+            print({k: row[k] if row.get(k) else '' for k in ['o', 'o2', 'ns', 'op']})
+
+
 print("\nDeleting the collection and database...")
 sources_team_members_coll.drop()
 
