@@ -37,7 +37,7 @@ file for mongo
   - Non-oplog streams
     - Uses `custom-select-clause` metadata for a stream to get the select statement
       - streams that don't have this are skipped
-    - whitelisting is done post select, we should use projetions instead of this
+    - whitelisting is done post select, we should use projections instead of this
   - oplog streams
     - works similar to other db taps
     - whitelisting again performed post select
