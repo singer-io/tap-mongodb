@@ -48,7 +48,7 @@ def produce_collection_schema(collection):
                     valid_replication_keys.append(index_field_info[0])
         if valid_replication_keys:
             mdata = metadata.write(mdata, (), 'valid-replication-keys', valid_replication_keys)
-    
+
     return {
         'table_name': collection_name,
         'stream': collection_name,
@@ -61,25 +61,18 @@ def produce_collection_schema(collection):
 
 
 def do_discover(client):
-    database_names = client.list_database_names()
-
     streams = []
 
+    database_names = client.list_database_names()
     for db_name in [d for d in database_names
                     if d not in IGNORE_DBS]:
         db = client[db_name]
 
-
         collection_names = db.list_collection_names()
-        collection_names_filtered = [c for c in collection_names if not c.startswith("system.")]
-
         for collection_name in [c for c in collection_names
                                 if not c.startswith("system.")]:
-
             LOGGER.info("Getting collection info for db: " + db_name + ", collection: " + collection_name)
-            
             collection = db[collection_name]
-
             streams.append(produce_collection_schema(collection))
 
     json.dump({'streams' : streams}, sys.stdout, indent=2)
