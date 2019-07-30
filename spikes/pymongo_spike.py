@@ -47,7 +47,7 @@ sources_team_members_coll.insert_one({"name": "Nick", "membersince": 2018})
 
 # Add multiple documents to collection
 print("\nAdding everyone else to collection=sources_team_members...")
-sources_team_members_coll.insert_many([{"name": "Jacob", "membersince": 2019},
+sources_team_members_coll.insert_many([{"name": "Jacob", "membersince": 2019, "my_object": {"nested_field": "some_value"}},
                                        {"name": "Collin", "membersince": 2019},
                                        {"name": "Dan", "membersince": 2017},
                                        {"name": "Kyle", "membersince": 2016},
