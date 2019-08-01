@@ -22,8 +22,6 @@ REQUIRED_CONFIG_KEYS = [
 
 IGNORE_DBS = ['admin', 'system', 'local', 'config']
 
-
-
 def produce_collection_schema(collection):
     collection_name = collection.name
     collection_db_name = collection.database.name
@@ -261,8 +259,8 @@ def sync_non_oplog_streams(client, streams, state):
                 continue
             elif replication_method == 'FULL_TABLE':
                 write_schema_message(stream)
-                stream_version = common.get_stream_version(stream['tap_stream_id'], state)
-                full_table.sync_table(client, stream, state, stream_version, stream_projection)
+
+                full_table.sync_table(client, stream, state,  stream_projection)
 
                 state = singer.write_bookmark(state,
                                               stream['tap_stream_id'],

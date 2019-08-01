@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 from bson import objectid
 import copy
 import pymongo
@@ -29,9 +30,8 @@ def get_max_id_value(collection):
     return str(row['_id'])
 
 
-def sync_table(client, stream, state, stream_version, projection):
+def sync_table(client, stream, state, projection):
     common.whitelist_bookmark_keys(generate_bookmark_keys(stream), stream['tap_stream_id'], state)
-
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
 
@@ -40,18 +40,35 @@ def sync_table(client, stream, state, stream_version, projection):
     db = client[database_name]
     collection = db[stream['stream']]
 
+    #before writing the table version to state, check if we had one to begin with
+    first_run = singer.get_bookmark(state, stream['tap_stream_id'], 'version') is None
+
+    was_interrupted = singer.get_bookmark(state,
+                                          stream['tap_stream_id'],
+                                          'last_id_fetched') is not None
+
+    #pick a new table version IFF we do not have an
+    #initial_full_table_complete=True in our state
+    if was_interrupted:
+        stream_version = singer.get_bookmark(state, stream['tap_stream_id'], 'version')
+    else:
+        stream_version = int(time.time() * 1000)
+
+    state = singer.write_bookmark(state,
+                                  stream['tap_stream_id'],
+                                  'version',
+                                  stream_version)
+    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
     activate_version_message = singer.ActivateVersionMessage(
         stream=stream['stream'],
         version=stream_version
     )
 
-    initial_full_table_complete = singer.get_bookmark(state,
-                                                      stream['tap_stream_id'],
-                                                      'initial_full_table_complete')
 
     # For the initial replication, emit an ACTIVATE_VERSION message
     # at the beginning so the records show up right away.
-    if not initial_full_table_complete:
+    if first_run:
         singer.write_message(activate_version_message)
 
     max_id_value = singer.get_bookmark(state,
@@ -71,12 +88,13 @@ def sync_table(client, stream, state, stream_version, projection):
     find_filter = {'$lte': objectid.ObjectId(max_id_value)}
 
     if last_id_fetched:
-        find_filter['$gt': objectid.ObjectId(last_id_fetched)]
+        find_filter['$gt'] = objectid.ObjectId(last_id_fetched)
 
     LOGGER.info("Starting full table replication for table {}.{}".format(database_name, stream['stream']))
 
     with metrics.record_counter(None) as counter:
-        with collection.find({'_id': find_filter}, projection,
+        with collection.find({'_id': find_filter},
+                             projection,
                              sort=[("_id", pymongo.ASCENDING)]) as cursor:
             rows_saved = 0
 
