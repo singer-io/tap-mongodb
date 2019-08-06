@@ -61,7 +61,7 @@ def sync_table(client, stream, state, projection):
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
     activate_version_message = singer.ActivateVersionMessage(
-        stream=stream['stream'],
+        stream=common.calculate_destination_stream_name(stream),
         version=stream_version
     )
 

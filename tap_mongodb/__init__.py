@@ -225,11 +225,9 @@ def get_non_oplog_streams(client, streams, state):
 
 def write_schema_message(stream):
     singer.write_message(singer.SchemaMessage(
-        stream=stream['stream'],
+        stream=common.calculate_destination_stream_name(stream),
         schema=stream['schema'],
         key_properties=['_id']))
-
-
 
 def sync_non_oplog_streams(client, streams, state):
     for stream in streams:
@@ -272,7 +270,7 @@ def sync_non_oplog_streams(client, streams, state):
     state = singer.set_currently_syncing(state, None)
 
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
-    
+
 
 def do_sync(client, catalog, state):
     all_streams = catalog['streams']
@@ -280,7 +278,7 @@ def do_sync(client, catalog, state):
 
     sync_non_oplog_streams(client, non_oplog_streams, state)
 
-    
+
 def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
@@ -291,6 +289,8 @@ def main_impl():
                           password=config.get('password', None),
                           authSource=config['database'])
 
+
+    common.include_schemas_in_destination_stream_name = (config.get('include_schemas_in_destination_stream_name') == 'true')
 
     if args.discover:
          do_discover(client)

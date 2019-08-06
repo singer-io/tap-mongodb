@@ -3,11 +3,20 @@ import datetime
 
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
-from singer import utils
+from singer import utils, metadata
 
 import pytz
 import time
 import tzlocal
+
+include_schemas_in_destination_stream_name = False
+
+def calculate_destination_stream_name(stream):
+    s_md = metadata.to_map(stream['metadata'])
+    if include_schemas_in_destination_stream_name:
+        return "{}_{}".format(s_md.get((), {}).get('database-name'), stream['stream'])
+
+    return stream['stream']
 
 def whitelist_bookmark_keys(bookmark_key_set, tap_stream_id, state):
     for bk in [non_whitelisted_bookmark_key
@@ -49,7 +58,7 @@ def row_to_singer_record(stream, row, version, time_extracted):
     row_to_persist = {k:transform_value(v) for k,v in row.items()}
 
     return singer.RecordMessage(
-        stream=stream['stream'],
+        stream=calculate_destination_stream_name(stream),
         record=row_to_persist,
         version=version,
         time_extracted=time_extracted)
