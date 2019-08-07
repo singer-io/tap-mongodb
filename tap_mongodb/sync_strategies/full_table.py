@@ -43,12 +43,12 @@ def sync_table(client, stream, state, projection):
     #before writing the table version to state, check if we had one to begin with
     first_run = singer.get_bookmark(state, stream['tap_stream_id'], 'version') is None
 
+    # last run was interrupted if there is a last_id_fetched bookmark
     was_interrupted = singer.get_bookmark(state,
                                           stream['tap_stream_id'],
                                           'last_id_fetched') is not None
 
-    #pick a new table version IFF we do not have an
-    #initial_full_table_complete=True in our state
+    #pick a new table version if last run wasn't interrupted
     if was_interrupted:
         stream_version = singer.get_bookmark(state, stream['tap_stream_id'], 'version')
     else:
@@ -88,7 +88,7 @@ def sync_table(client, stream, state, projection):
     find_filter = {'$lte': objectid.ObjectId(max_id_value)}
 
     if last_id_fetched:
-        find_filter['$gt'] = objectid.ObjectId(last_id_fetched)
+        find_filter['$gte'] = objectid.ObjectId(last_id_fetched)
 
     LOGGER.info("Starting full table replication for table {}.{}".format(database_name, stream['stream']))
 
