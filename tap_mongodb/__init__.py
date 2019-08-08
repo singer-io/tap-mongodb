@@ -80,58 +80,6 @@ def do_discover(client):
 
 
 
-def is_stream_selected(stream):
-    mdata = metadata.to_map(stream['metadata'])
-    stream_metadata = mdata.get(())
-
-    is_selected = stream_metadata.get('selected')
-
-    return is_selected == True
-
-
-def get_non_oplog_streams(client, streams, state):
-    selected_streams = list(filter(lambda s: is_stream_selected(s), streams))
-
-    streams_with_state = []
-    streams_without_state = []
-
-    for stream in selected_streams:
-        stream_metadata = metadata.to_map(stream['metadata'])
-        replication_method = stream_metadata.get((), {}).get('replication-method')
-        stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
-
-        if not stream_state:
-            if replication_method == 'LOG_BASED':
-                LOGGER.info("LOG_BASED stream %s requires full historical sync", stream['tap_stream_id'])
-
-            streams_without_state.append(stream)
-        elif stream_state and replication_method == 'LOG_BASED' and oplog_stream_requires_historical(stream, state):
-            LOGGER.info("LOG_BASED stream %s will resume its historical sync", stream['tap_stream_id'])
-            streams_with_state.append(stream)
-        elif stream_state and replication_method != 'LOG_BASED':
-            streams_with_state.append(stream)
-
-    # If the state says we were in the middle of processing a stream, skip
-    # to that stream. Then process streams without prior state and finally
-    # move onto streams with state (i.e. have been synced in the past)
-    currently_syncing = singer.get_currently_syncing(state)
-
-    # prioritize streams that have not been processed
-    ordered_streams = streams_without_state + streams_with_state
-
-    if currently_syncing:
-        currently_syncing_stream = list(filter(
-            lambda s: s['tap_stream_id'] == currently_syncing and is_valid_currently_syncing_stream(s, state),
-            streams_with_state))
-
-        non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id'] != currently_syncing, ordered_streams))
-
-        streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
-    else:
-        # prioritize streams that have not been processed
-        streams_to_sync = ordered_streams
-
-    return streams_to_sync
 
 def is_stream_selected(stream):
     mdata = metadata.to_map(stream['metadata'])
