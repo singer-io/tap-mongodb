@@ -126,46 +126,33 @@ def is_valid_currently_syncing_stream(selected_stream, state):
 
 
 
-def get_non_oplog_streams(client, streams, state):
+def get_streams_to_sync(client, streams, state):
+
+    # get selected streams
     selected_streams = list(filter(lambda s: is_stream_selected(s), streams))
 
+    # prioritize streams that have not been processed
     streams_with_state = []
     streams_without_state = []
-
     for stream in selected_streams:
         stream_metadata = metadata.to_map(stream['metadata'])
-        replication_method = stream_metadata.get((), {}).get('replication-method')
         stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
+        streams_with_state.append(stream) if stream_state else streams_without_state.append(stream)
 
-        if not stream_state:
-            if replication_method == 'LOG_BASED':
-                LOGGER.info("LOG_BASED stream %s requires full historical sync", stream['tap_stream_id'])
-
-            streams_without_state.append(stream)
-        elif stream_state and replication_method == 'LOG_BASED' and oplog_stream_requires_historical(stream, state):
-            LOGGER.info("LOG_BASED stream %s will resume its historical sync", stream['tap_stream_id'])
-            streams_with_state.append(stream)
-        elif stream_state and replication_method != 'LOG_BASED':
-            streams_with_state.append(stream)
+    ordered_streams = streams_without_state + streams_with_state
 
     # If the state says we were in the middle of processing a stream, skip
     # to that stream. Then process streams without prior state and finally
     # move onto streams with state (i.e. have been synced in the past)
     currently_syncing = singer.get_currently_syncing(state)
-
-    # prioritize streams that have not been processed
-    ordered_streams = streams_without_state + streams_with_state
-
     if currently_syncing:
         currently_syncing_stream = list(filter(
             lambda s: s['tap_stream_id'] == currently_syncing and is_valid_currently_syncing_stream(s, state),
             streams_with_state))
-
         non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id'] != currently_syncing, ordered_streams))
 
         streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
     else:
-        # prioritize streams that have not been processed
         streams_to_sync = ordered_streams
 
     return streams_to_sync
@@ -177,43 +164,36 @@ def write_schema_message(stream):
         schema=stream['schema'],
         key_properties=['_id']))
 
-def sync_non_oplog_streams(client, streams, state):
-    for stream in streams:
-        md_map = metadata.to_map(stream['metadata'])
-        stream_metadata = md_map.get(())
-        stream_projection = stream_metadata.get('projection')
-        # import ipdb
-        # ipdb.set_trace()
+def sync_stream(client, stream, state):
+    md_map = metadata.to_map(stream['metadata'])
+    stream_metadata = md_map.get(())
+    stream_projection = stream_metadata.get('projection')
+    # import ipdb
+    # ipdb.set_trace()
 
-        if not stream_projection:
-            LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
+    if not stream_projection:
+        LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
 
-        state = singer.set_currently_syncing(state, stream['tap_stream_id'])
+    state = singer.set_currently_syncing(state, stream['tap_stream_id'])
 
-        # Emit a state message to indicate that we've started this stream
-        singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+    # Emit a state message to indicate that we've started this stream
+    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+    write_schema_message(stream)
 
-        replication_method = stream_metadata.get('replication-method')
+    replication_method = stream_metadata.get('replication-method')
 
-        database_name = stream_metadata.get('database-name')
+    database_name = stream_metadata.get('database-name')
 
-        with metrics.job_timer('sync_table') as timer:
-            timer.tags['database'] = database_name
-            timer.tags['table'] = stream['table_name']
-            if replication_method == 'LOG_BASED':
-               # do_sync_historical_oplog(client, stream, state, columns)
-                continue
-            elif replication_method == 'FULL_TABLE':
-                write_schema_message(stream)
+    with metrics.job_timer('sync_table') as timer:
+        timer.tags['database'] = database_name
+        timer.tags['table'] = stream['table_name']
 
-                full_table.sync_table(client, stream, state,  stream_projection)
-
-                state = singer.write_bookmark(state,
-                                              stream['tap_stream_id'],
-                                              'initial_full_table_complete',
-                                              True)
-            else:
-                raise Exception("only LOG_BASED and FULL TABLE replication methods are supported (you passed {})".format(replication_method))
+        if replication_method == 'LOG_BASED':
+            do_sync_historical_oplog(client, stream, state, columns)
+        if replication_method == 'FULL_TABLE':
+            full_table.sync_collection(client, stream, state,  stream_projection)
+        else:
+            raise Exception("only FULL TABLE replication methods are supported (you passed {})".format(replication_method))
 
     state = singer.set_currently_syncing(state, None)
 
@@ -222,9 +202,11 @@ def sync_non_oplog_streams(client, streams, state):
 
 def do_sync(client, catalog, state):
     all_streams = catalog['streams']
-    non_oplog_streams = get_non_oplog_streams(client, all_streams, state)
+    streams_to_sync = get_streams_to_sync(client, all_streams, state)
 
-    sync_non_oplog_streams(client, non_oplog_streams, state)
+    for stream in streams_to_sync:
+        LOGGER.info('Starting sync for %s', stream['tap_stream_id'])
+        sync_stream(client, stream, state)
 
 
 def main_impl():

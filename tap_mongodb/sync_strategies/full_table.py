@@ -30,7 +30,7 @@ def get_max_id_value(collection):
     return str(row['_id'])
 
 
-def sync_table(client, stream, state, projection):
+def sync_collection(client, stream, state, projection):
     common.whitelist_bookmark_keys(generate_bookmark_keys(stream), stream['tap_stream_id'], state)
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
@@ -116,11 +116,16 @@ def sync_table(client, stream, state, projection):
                                               str(row['_id']))
 
 
-                if rows_saved % 1000 == 0:
+                if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
     # clear max pk value and last pk fetched upon successful sync
     singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
     singer.clear_bookmark(state, stream['tap_stream_id'], 'last_id_fetched')
+
+    state = singer.write_bookmark(state,
+                                  stream['tap_stream_id'],
+                                  'initial_full_table_complete',
+                                  True)
 
     singer.write_message(activate_version_message)

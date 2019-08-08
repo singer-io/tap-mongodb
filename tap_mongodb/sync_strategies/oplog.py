@@ -23,7 +23,7 @@ def update_bookmarks(state, tap_stream_id, ts):
                                   tap_stream_id,
                                   'oplog_ts_time',
                                   ts.time)
-    
+
     state = singer.write_bookmark(state,
                                   tap_stream_id,
                                   'oplog_ts_inc',
@@ -36,7 +36,7 @@ def transform_projection(projection):
     new_projection = {}
     for field,value in projection.items():
         new_projection['o.'+field] = value
-    new_projection['o._id'] = 1 
+    new_projection['o._id'] = 1
     return new_projection
 
 def sync_oplog_stream(client, stream, state, stream_projection):
@@ -45,7 +45,7 @@ def sync_oplog_stream(client, stream, state, stream_projection):
     stream_metadata = md_map.get(())
     db_name = stream_metadata.get("database-name")
     collection_name = stream.get("table_name")
-    
+
     common.whitelist_bookmark_keys(BOOKMARK_KEYS, tap_stream_id, state)
 
     oplog_ts = min([timestamp.Timestamp(v['oplog_ts_time'], v['oplog_ts_inc'])
@@ -73,7 +73,7 @@ def sync_oplog_stream(client, stream, state, stream_projection):
     else:
         projection = base_projection
         projection['o'] = 1
-        
+
     with client.local.oplog.rs.find(oplog_query, projection, oplog_replay=True) as cursor:
         for row in cursor:
             row_op = row['op']
@@ -87,7 +87,7 @@ def sync_oplog_stream(client, stream, state, stream_projection):
                 singer.write_message(record_message)
 
             elif row_op == 'd':
-                # Delete ops only contain the _id of the row deleted                
+                # Delete ops only contain the _id of the row deleted
                 whitelisted_row['_id'] = row['o']['_id']
                 whitelisted_row[SDC_DELETED_AT] = row['ts']
 
@@ -99,11 +99,9 @@ def sync_oplog_stream(client, stream, state, stream_projection):
                 rows_saved += 1
             else:
                 LOGGER.info("Skipping op for table %s as it is not an INSERT, UPDATE, or DELETE", row['ns'])
-                
+
             state = update_bookmarks(state,
                                      tap_stream_id,
                                      row['ts'])
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
-
-            

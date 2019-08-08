@@ -10,6 +10,7 @@ import time
 import tzlocal
 
 include_schemas_in_destination_stream_name = False
+UPDATE_BOOKMARK_PERIOD = 1000
 
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
