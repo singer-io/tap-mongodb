@@ -3,12 +3,13 @@ import copy
 import json
 import sys
 from pymongo import MongoClient
-
+from bson import timestamp
 
 import singer
 from singer import metadata, metrics, utils
 import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
+import tap_mongodb.sync_strategies.oplog as oplog
 
 
 LOGGER = singer.get_logger()
@@ -60,7 +61,6 @@ def produce_collection_schema(collection):
         }
     }
 
-
 def do_discover(client):
     streams = []
 
@@ -79,8 +79,6 @@ def do_discover(client):
     json.dump({'streams' : streams}, sys.stdout, indent=2)
 
 
-
-
 def is_stream_selected(stream):
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
@@ -88,43 +86,6 @@ def is_stream_selected(stream):
     is_selected = stream_metadata.get('selected')
 
     return is_selected == True
-
-
-def oplog_stream_requires_historical(stream, state):
-    oplog_ts_time = singer.get_bookmark(state,
-                                        stream['tap_stream_id'],
-                                        'oplog_ts_time')
-
-    oplog_ts_inc = singer.get_bookmark(state,
-                                        stream['tap_stream_id'],
-                                        'oplog_ts_inc')
-
-    max_id_value = singer.get_bookmark(state,
-                                       stream['tap_stream_id'],
-                                       'max_id_value')
-
-    last_id_fetched = singer.get_bookmark(state,
-                                          stream['tap_stream_id'],
-                                          'last_id_fetched')
-
-    if (oplog_ts_time and oplog_ts_inc) and (not max_id_value and not last_id_fetched):
-        return False
-
-    return True
-
-def is_valid_currently_syncing_stream(selected_stream, state):
-    stream_metadata = metadata.to_map(selected_stream['metadata'])
-    replication_method = stream_metadata.get((), {}).get('replication-method')
-
-    if replication_method != 'LOG_BASED':
-        return True
-
-    if replication_method == 'LOG_BASED' and oplog_stream_requires_historical(selected_stream, state):
-        return True
-
-    return False
-
-
 
 def get_streams_to_sync(client, streams, state):
 
@@ -147,7 +108,7 @@ def get_streams_to_sync(client, streams, state):
     currently_syncing = singer.get_currently_syncing(state)
     if currently_syncing:
         currently_syncing_stream = list(filter(
-            lambda s: s['tap_stream_id'] == currently_syncing and is_valid_currently_syncing_stream(s, state),
+            lambda s: s['tap_stream_id'] == currently_syncing,
             streams_with_state))
         non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id'] != currently_syncing, ordered_streams))
 
@@ -165,35 +126,51 @@ def write_schema_message(stream):
         key_properties=['_id']))
 
 def sync_stream(client, stream, state):
+    tap_stream_id = stream['tap_stream_id']
+
     md_map = metadata.to_map(stream['metadata'])
     stream_metadata = md_map.get(())
+    replication_method = stream_metadata.get('replication-method')
+    database_name = stream_metadata.get('database-name')
     stream_projection = stream_metadata.get('projection')
-    # import ipdb
-    # ipdb.set_trace()
+
+    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
 
     if not stream_projection:
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
 
-    state = singer.set_currently_syncing(state, stream['tap_stream_id'])
-
     # Emit a state message to indicate that we've started this stream
+    state = singer.set_currently_syncing(state, stream['tap_stream_id'])
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
     write_schema_message(stream)
-
-    replication_method = stream_metadata.get('replication-method')
-
-    database_name = stream_metadata.get('database-name')
 
     with metrics.job_timer('sync_table') as timer:
         timer.tags['database'] = database_name
         timer.tags['table'] = stream['table_name']
 
         if replication_method == 'LOG_BASED':
-            do_sync_historical_oplog(client, stream, state, columns)
+
+            # make sure initial full table sync has been completed
+            if not stream_state.get('initial_full_table_complete'):
+                LOGGER.info('Must complete full table sync before starting oplog replication')
+
+                # mark current ts in oplog so tap has a starting point
+                # after the full table sync
+                collection_oplog_ts = oplog.get_latest_collection_ts(client, stream)
+                oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
+
+                full_table.sync_collection(client, stream, state, stream_projection)
+
+            #TODO: Check if oplog has aged out here
+
+            oplog.sync_collection(client, stream, state, columns)
+
         if replication_method == 'FULL_TABLE':
             full_table.sync_collection(client, stream, state,  stream_projection)
+
         else:
-            raise Exception("only FULL TABLE replication methods are supported (you passed {})".format(replication_method))
+            raise Exception("only FULL TABLE and LOG-BASED replication methods are supported (you passed {})".format(replication_method))
 
     state = singer.set_currently_syncing(state, None)
 

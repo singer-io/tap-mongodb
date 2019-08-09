@@ -10,28 +10,11 @@ import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
 
-def generate_bookmark_keys(stream):
-    md_map = metadata.to_map(stream['metadata'])
-    stream_metadata = md_map.get((), {})
-    replication_method = stream_metadata.get('replication-method')
-
-    base_bookmark_keys = {'last_id_fetched', 'max_id_value', 'version', 'initial_full_table_complete'}
-
-    if replication_method == 'FULL_TABLE':
-        bookmark_keys = base_bookmark_keys
-    else:
-        bookmark_keys = base_bookmark_keys.union(oplog.BOOKMARK_KEYS)
-
-    return bookmark_keys
-
-
 def get_max_id_value(collection):
     row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
     return str(row['_id'])
 
-
 def sync_collection(client, stream, state, projection):
-    common.whitelist_bookmark_keys(generate_bookmark_keys(stream), stream['tap_stream_id'], state)
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
 

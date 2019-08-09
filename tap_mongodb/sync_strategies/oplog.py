@@ -11,12 +11,33 @@ LOGGER = singer.get_logger()
 
 SDC_DELETED_AT = "_sdc_deleted_at"
 
-BOOKMARK_KEYS = {'oplog_ts_time', 'oplog_ts_inc', 'version'}
+def get_latest_collection_ts(client, stream):
+    md_map = metadata.to_map(stream['metadata'])
+    stream_metadata = md_map.get(())
+    db_name = stream_metadata.get("database-name")
+    collection_name = stream.get("table_name")
 
-def get_latest_ts(client):
-    row = client.local.oplog.rs.find_one(sort=[('$natural', pymongo.DESCENDING)])
-
+    find_query = {'ns': '{}.{}'.format(db_name, collection_name)}
+    row = client.local.oplog.rs.find_one(find_query,
+                                         sort=[('$natural', pymongo.DESCENDING)])
     return row.get('ts')
+
+def oplog_has_aged_out(client, state, stream):
+    md_map = metadata.to_map(stream['metadata'])
+    stream_metadata = md_map.get(())
+    db_name = stream_metadata.get("database-name")
+    collection_name = stream.get("table_name")
+
+    find_query = {'ns': '{}.{}'.format(db_name, collection_name)}
+    earliest_ts_row = client.local.oplog.rs.find_one(find_query,
+                                                     sort=[('$natural', pymongo.ASCENDING)])
+    earliest_ts = earliest_ts_row.get('ts')
+
+    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
+    bookmarked_ts = timestamp.Timestamp(stream_state['oplog_ts_time'],
+                                        stream_state['oplog_ts_inc'])
+
+    return bookmarked_ts < earliest_ts
 
 def update_bookmarks(state, tap_stream_id, ts):
     state = singer.write_bookmark(state,
@@ -39,18 +60,16 @@ def transform_projection(projection):
     new_projection['o._id'] = 1
     return new_projection
 
-def sync_oplog_stream(client, stream, state, stream_projection):
+def sync_collection(client, stream, state, stream_projection):
     tap_stream_id = stream['tap_stream_id']
     md_map = metadata.to_map(stream['metadata'])
     stream_metadata = md_map.get(())
     db_name = stream_metadata.get("database-name")
     collection_name = stream.get("table_name")
+    stream_state = state.get('bookmarks', {}).get(tap_stream_id)
 
-    common.whitelist_bookmark_keys(BOOKMARK_KEYS, tap_stream_id, state)
-
-    oplog_ts = min([timestamp.Timestamp(v['oplog_ts_time'], v['oplog_ts_inc'])
-                    for k,v in state.get('bookmarks', {}).items()
-                    if streams_map.get(k)])
+    oplog_ts = timestamp.Timestamp(stream_state['oplog_ts_time'],
+                                   stream_state['oplog_ts_inc'])
 
     LOGGER.info("Starting oplog replication with ts=%s", oplog_ts)
 
