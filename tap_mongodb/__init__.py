@@ -134,7 +134,7 @@ def sync_stream(client, stream, state):
     database_name = stream_metadata.get('database-name')
     stream_projection = stream_metadata.get('projection')
 
-    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
+    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'],{})
 
     if not stream_projection:
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
@@ -164,9 +164,9 @@ def sync_stream(client, stream, state):
 
             #TODO: Check if oplog has aged out here
 
-            oplog.sync_collection(client, stream, state, columns)
+            oplog.sync_collection(client, stream, state, stream_projection)
 
-        if replication_method == 'FULL_TABLE':
+        elif replication_method == 'FULL_TABLE':
             full_table.sync_collection(client, stream, state,  stream_projection)
 
         else:

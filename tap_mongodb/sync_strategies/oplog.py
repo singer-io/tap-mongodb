@@ -79,7 +79,7 @@ def sync_collection(client, stream, state, stream_projection):
     ops_skipped = 0
 
     oplog_query = {
-        'ts': {'$gt': oplog_ts},
+        'ts': {'$gte': oplog_ts},
         'op': {'$in': ['i', 'u', 'd']},
         'ns': '{}.{}'.format(db_name, collection_name)
     }
@@ -107,13 +107,12 @@ def sync_collection(client, stream, state, stream_projection):
 
             elif row_op == 'd':
                 # Delete ops only contain the _id of the row deleted
-                whitelisted_row['_id'] = row['o']['_id']
-                whitelisted_row[SDC_DELETED_AT] = row['ts']
-
+                row['o'][SDC_DELETED_AT] = row['ts']
                 record_message = common.row_to_singer_record(stream,
-                                                             whitelisted_row,
+                                                             row['o'],
                                                              common.get_stream_version(tap_stream_id, state),
                                                              time_extracted)
+
                 singer.write_message(record_message)
                 rows_saved += 1
             else:
