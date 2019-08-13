@@ -84,8 +84,8 @@ def sync_collection(client, stream, state, stream_projection):
     version = common.get_stream_version(tap_stream_id, state)
     activate_version_message = singer.ActivateVersionMessage(
         stream=common.calculate_destination_stream_name(stream),
-        version=stream_versio
-    )n
+        version=version
+    )
     singer.write_message(activate_version_message)
 
     LOGGER.info("Starting oplog replication with ts=%s", oplog_ts)

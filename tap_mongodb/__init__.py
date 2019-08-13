@@ -72,8 +72,14 @@ def do_discover(client):
         collection_names = db.list_collection_names()
         for collection_name in [c for c in collection_names
                                 if not c.startswith("system.")]:
-            LOGGER.info("Getting collection info for db: " + db_name + ", collection: " + collection_name)
+
             collection = db[collection_name]
+            is_view = collection.options().get('viewOn') is not None
+            # TODO: Add support for views
+            if is_view:
+                continue
+
+            LOGGER.info("Getting collection info for db: " + db_name + ", collection: " + collection_name)
             streams.append(produce_collection_schema(collection))
 
     json.dump({'streams' : streams}, sys.stdout, indent=2)
@@ -132,11 +138,14 @@ def sync_stream(client, stream, state):
     stream_metadata = md_map.get(())
     replication_method = stream_metadata.get('replication-method')
     database_name = stream_metadata.get('database-name')
-    stream_projection = stream_metadata.get('projection')
+
+    stream_projection = stream_metadata.get('tap-mongodb.projection')
 
     stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'],{})
 
-    if not stream_projection:
+    if stream_projection:
+        stream_projection = json.loads(stream_projection)
+    else:
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
 
     # Emit a state message to indicate that we've started this stream
@@ -194,7 +203,9 @@ def main_impl():
                           port=int(config['port']),
                           username=config.get('user', None),
                           password=config.get('password', None),
-                          authSource=config['database'])
+                          authSource=config['database'],
+                          ssl=(config.get('ssl')=='true'),
+                          replicaset=config.get('replica_set', None))
 
 
     common.include_schemas_in_destination_stream_name = (config.get('include_schemas_in_destination_stream_name') == 'true')
