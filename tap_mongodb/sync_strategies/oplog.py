@@ -78,7 +78,7 @@ def sync_collection(client, stream, state, stream_projection):
     stream_state = state.get('bookmarks', {}).get(tap_stream_id)
 
     oplog_ts = timestamp.Timestamp(stream_state['oplog_ts_time'],
-        stream_state['oplog_ts_inc'])
+                                   stream_state['oplog_ts_inc'])
 
     # Write activate version message
     version = common.get_stream_version(tap_stream_id, state)
