@@ -71,9 +71,11 @@ def flush_buffer(client, update_buffer, stream_projection, db_name, collection_n
 
 def sync_collection(client, stream, state, stream_projection):
     tap_stream_id = stream['tap_stream_id']
+    LOGGER.info('Starting oplog sync for {}'.format(tap_stream_id))
+
     md_map = metadata.to_map(stream['metadata'])
     stream_metadata = md_map.get(())
-    db_name = stream_metadata.get("database-name")
+    database_name = stream_metadata.get("database-name")
     collection_name = stream.get("table_name")
     stream_state = state.get('bookmarks', {}).get(tap_stream_id)
 
@@ -88,15 +90,13 @@ def sync_collection(client, stream, state, stream_projection):
     )
     singer.write_message(activate_version_message)
 
-    LOGGER.info("Starting oplog replication with ts=%s", oplog_ts)
-
     time_extracted = utils.now()
     rows_saved = 0
 
     oplog_query = {
         'ts': {'$gte': oplog_ts},
         'op': {'$in': ['i', 'u', 'd']},
-        'ns': '{}.{}'.format(db_name, collection_name)
+        'ns': '{}.{}'.format(database_name, collection_name)
     }
 
     base_projection = {
@@ -107,6 +107,9 @@ def sync_collection(client, stream, state, stream_projection):
     else:
         projection = base_projection
         projection['o'] = 1
+
+    LOGGER.info('Querying {} with:\n\tFind Parameters: {}\n\tProjection: {}'.format(
+        tap_stream_id, oplog_query, base_projection))
 
     update_buffer = set()
     with client.local.oplog.rs.find(oplog_query, projection, oplog_replay=True) as cursor:
@@ -144,7 +147,7 @@ def sync_collection(client, stream, state, stream_projection):
 
             # flush buffer if it has filled up
             if len(update_buffer) >= MAX_UPDATE_BUFFER_LENGTH:
-                for row in flush_buffer(client, update_buffer, stream_projection, db_name, collection_name):
+                for row in flush_buffer(client, update_buffer, stream_projection, database_name, collection_name):
                     record_message = common.row_to_singer_record(stream, row, version, time_extracted)
                     singer.write_message(record_message)
 
@@ -154,7 +157,7 @@ def sync_collection(client, stream, state, stream_projection):
             # write state every UPDATE_BOOKMARK_PERIOD messages
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                 # flush buffer before writing state
-                for row in flush_buffer(client, update_buffer, stream_projection, db_name, collection_name):
+                for row in flush_buffer(client, update_buffer, stream_projection, database_name, collection_name):
                     record_message = common.row_to_singer_record(stream, row, version, time_extracted)
                     singer.write_message(record_message)
 
@@ -165,8 +168,10 @@ def sync_collection(client, stream, state, stream_projection):
                 singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
         # flush buffer if finished with oplog
-        for row in flush_buffer(client, update_buffer, stream_projection, db_name, collection_name):
+        for row in flush_buffer(client, update_buffer, stream_projection, database_name, collection_name):
             record_message = common.row_to_singer_record(stream, row, version, time_extracted)
 
             singer.write_message(record_message)
             rows_saved += 1
+
+    LOGGER.info('Syncd {} records for {}'.format(rows_saved, tap_stream_id))

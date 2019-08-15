@@ -15,9 +15,11 @@ def get_max_id_value(collection):
     return str(row['_id'])
 
 def sync_collection(client, stream, state, projection):
+    tap_stream_id = stream['tap_stream_id']
+    LOGGER.info('Starting full table sync for {}'.format(tap_stream_id))
+
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
-
     database_name = stream_metadata['database-name']
 
     db = client[database_name]
@@ -67,40 +69,44 @@ def sync_collection(client, stream, state, projection):
                                   'max_id_value',
                                   max_id_value)
 
-
     find_filter = {'$lte': objectid.ObjectId(max_id_value)}
-
     if last_id_fetched:
         find_filter['$gte'] = objectid.ObjectId(last_id_fetched)
 
-    LOGGER.info("Starting full table replication for table {}.{}".format(database_name, stream['stream']))
 
-    with metrics.record_counter(None) as counter:
-        with collection.find({'_id': find_filter},
-                             projection,
-                             sort=[("_id", pymongo.ASCENDING)]) as cursor:
-            rows_saved = 0
-
-            time_extracted = utils.now()
-
-            for row in cursor:
-                rows_saved += 1
-
-                record_message = common.row_to_singer_record(stream,
-                                                             row,
-                                                             stream_version,
-                                                             time_extracted)
-
-                singer.write_message(record_message)
-
-                state = singer.write_bookmark(state,
-                                              stream['tap_stream_id'],
-                                              'last_id_fetched',
-                                              str(row['_id']))
+    query_message = 'Querying {} with:\n\tFind Parameters: {}'.format(
+        stream['tap_stream_id'],
+        find_filter)
+    if projection:
+        query_message += '\n\tProjection: {}'.format(projection)
+    LOGGER.info(query_message)
 
 
-                if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
-                    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+    with collection.find({'_id': find_filter},
+                         projection,
+                         sort=[("_id", pymongo.ASCENDING)]) as cursor:
+        rows_saved = 0
+
+        time_extracted = utils.now()
+
+        for row in cursor:
+            rows_saved += 1
+
+            record_message = common.row_to_singer_record(stream,
+                                                         row,
+                                                         stream_version,
+                                                         time_extracted)
+
+            singer.write_message(record_message)
+
+            state = singer.write_bookmark(state,
+                                          stream['tap_stream_id'],
+                                          'last_id_fetched',
+                                          str(row['_id']))
+
+
+            if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
+                singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
     # clear max pk value and last pk fetched upon successful sync
     singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
@@ -112,3 +118,5 @@ def sync_collection(client, stream, state, projection):
                                   True)
 
     singer.write_message(activate_version_message)
+
+    LOGGER.info('Syncd {} records for {}'.format(rows_saved, tap_stream_id))

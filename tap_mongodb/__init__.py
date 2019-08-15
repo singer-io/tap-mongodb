@@ -162,7 +162,7 @@ def sync_stream(client, stream, state):
 
             # make sure initial full table sync has been completed
             if not stream_state.get('initial_full_table_complete'):
-                LOGGER.info('Must complete full table sync before starting oplog replication')
+                LOGGER.info('Must complete full table sync before starting oplog replication for {}'.format(tap_stream_id))
 
                 # mark current ts in oplog so tap has a starting point
                 # after the full table sync
@@ -172,7 +172,6 @@ def sync_stream(client, stream, state):
                 full_table.sync_collection(client, stream, state, stream_projection)
 
             #TODO: Check if oplog has aged out here
-
             oplog.sync_collection(client, stream, state, stream_projection)
 
         elif replication_method == 'FULL_TABLE':
@@ -191,7 +190,6 @@ def do_sync(client, catalog, state):
     streams_to_sync = get_streams_to_sync(client, all_streams, state)
 
     for stream in streams_to_sync:
-        LOGGER.info('Starting sync for %s', stream['tap_stream_id'])
         sync_stream(client, stream, state)
 
 
