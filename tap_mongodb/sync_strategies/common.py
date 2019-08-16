@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import datetime
-
+import bson
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
@@ -8,6 +8,7 @@ from singer import utils, metadata
 import pytz
 import time
 import tzlocal
+import decimal
 
 include_schemas_in_destination_stream_name = False
 UPDATE_BOOKMARK_PERIOD = 1000
@@ -47,16 +48,38 @@ def transform_value(value):
         timezone = tzlocal.get_localzone()
         local_datetime = timezone.localize(value)
         utc_datetime = local_datetime.astimezone(pytz.UTC)
-
         return utils.strftime(utc_datetime)
     elif isinstance(value, timestamp.Timestamp):
         return utils.strftime(value.as_datetime())
+    elif isinstance(value, bson.int64.Int64):
+        return int(value)
+    elif isinstance(value, bytes):
+        return value.decode()
+    elif isinstance(value, datetime.datetime):
+        timezone = tzlocal.get_localzone()
+        local_datetime = timezone.localize(value)
+        utc_datetime = local_datetime.astimezone(pytz.UTC)
+        return utils.strftime(utc_datetime)
+    elif isinstance(value, bson.decimal128.Decimal128):
+        return value.to_decimal()
+    elif isinstance(value, bson.code.Code):
+        if value.scope:
+            return {
+                'value': str(value),
+                'scope': str(value.scope)
+            }
+        return str(value)
+    elif isinstance(value, bson.regex.Regex):
+        return {
+            'pattern': value.pattern,
+            'flags': value.flags
+        }
     else:
         return value
 
 
 def row_to_singer_record(stream, row, version, time_extracted):
-    row_to_persist = {k:transform_value(v) for k,v in row.items()}
+    row_to_persist = {k:transform_value(v) for k,v in row.items() if type(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
 
     return singer.RecordMessage(
         stream=calculate_destination_stream_name(stream),
