@@ -178,7 +178,7 @@ def sync_stream(client, stream, state):
             full_table.sync_collection(client, stream, state,  stream_projection)
 
         else:
-            raise Exception("only FULL TABLE and LOG-BASED replication methods are supported (you passed {})".format(replication_method))
+            raise Exception("only FULL_TABLE and LOG_BASED replication methods are supported (you passed {})".format(replication_method))
 
     state = singer.set_currently_syncing(state, None)
 
