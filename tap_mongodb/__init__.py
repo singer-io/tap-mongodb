@@ -48,8 +48,9 @@ def produce_collection_schema(collection):
                 # index_field_info is a tuple of (field_name, sort_direction)
                 if index_field_info:
                     valid_replication_keys.append(index_field_info[0])
-        if valid_replication_keys:
-            mdata = metadata.write(mdata, (), 'valid-replication-keys', valid_replication_keys)
+        # TODO: For incremental replication, uncomment below code
+        #if valid_replication_keys:
+            #mdata = metadata.write(mdata, (), 'valid-replication-keys', valid_replication_keys)
 
     return {
         'table_name': collection_name,
