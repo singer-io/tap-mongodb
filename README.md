@@ -132,6 +132,7 @@ The tap will write bookmarks to stdout which can be captured and passed as an op
 
 ### Local MongoDB Setup
 If you haven't yet set up a local mongodb client, follow [these instructions](https://github.com/singer-io/tap-mongodb/blob/master/spikes/local_mongo_setup.md)
+
 ---
 
 Copyright &copy; 2019 Stitch
