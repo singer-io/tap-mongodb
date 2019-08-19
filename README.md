@@ -25,6 +25,13 @@ Create json file called `config.json`, with the following contents:
   "database": "<database name>",
 }
 ```
+The folowing parameters are optional for your config file:
+
+| Name | Type | Description |
+| -----|------|------------ |
+| `replica_set` | string | name of replica set |
+|`ssl` | Boolean | can be set to true to connect using ssl |
+| `include_schema_in_destination_stream_name` | Boolean | forces the stream names to take the form `<database_name>_<collection_name>` instead of `<collection_name>`|
 
 All of the above attributes are required by the tap to connect to your mongo instance. 
 
