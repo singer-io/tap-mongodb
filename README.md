@@ -61,7 +61,7 @@ To select a stream, enter the following to the stream's metadata field:
 `"selected": true,
 "replication-method": [replication method],`
 To add metadata to a stream, add the following to the stream's metadata field:
-`"tap-mongodb.projection": [projection]`
+`"tap-mongodb.projection": <projection>`
 
 For example, if you were to edit the example stream to select the stream as well as add a projection, config.json should look this:
 ```
