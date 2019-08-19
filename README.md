@@ -35,9 +35,9 @@ Your catalog file should now look like this:
         {
           "breadcrumb": [],
           "metadata": {
-            "row-count": 100,
-            "is-view": false,
-            "database-name": "simple_db",
+            "row-count":<int>,
+            "is-view": <bool>,
+            "database-name": "<database name>",
             "table-key-properties": [
               "_id"
             ],
@@ -47,7 +47,7 @@ Your catalog file should now look like this:
           }
         }
       ],
-      "stream": "simple_coll_2",
+      "stream": "<stream name>",
       "schema": {
         "type": "object"
       }
@@ -74,9 +74,9 @@ For example, if you were to edit the example stream to select the stream as well
         {
           "breadcrumb": [],
           "metadata": {
-            "row-count": 100,
-            "is-view": false,
-            "database-name": "simple_db",
+            "row-count": <int>,
+            "is-view": <bool>,
+            "database-name": "<database name>",
             "table-key-properties": [
               "_id"
             ],
@@ -84,12 +84,12 @@ For example, if you were to edit the example stream to select the stream as well
               "_id"
             ],
             "selected": true,
-            "replication-method": "LOG_BASED",
-            "tap-mongodb.projection": "{\"string_field\": 1}"
+            "replication-method": "<replication method>",
+            "tap-mongodb.projection": "<projection>"
           }
         }
       ],
-      "stream": "simple_coll_2",
+      "stream": "<stream name>",
       "schema": {
         "type": "object"
       }
