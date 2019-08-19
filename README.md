@@ -2,80 +2,129 @@
 
 This is a [Singer](https://singer.io) tap that produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md) from a MongoDB source.
 
-**This is a Proof of Concept and may have limited utility.**
-
-The Singer.io core team welcomes proposals regarding how this tap should
-work, especially in terms of filling in known limitations, but no promises
-are made in terms of timeliness of responses.
-
-# Quickstart
-
-## Install the tap
-
-```bash
-git clone git@github.com:singer-io/tap-mongodb.git # Clone this Repo
-mkvirtualenv -p python3 tap-mongodb                # Create a virtualenv
-source tap-mongodb/bin/activate                    # Activate the virtualenv
-pip install -e .
+## Set up Virtual Environment
+```
+python3 -m venv ~/.virtualenvs/tap-mongodb
+source ~/.virtualenvs/tap-mongodb/bin/activate
 ```
 
-## Create a config.json
+## Install tap
+```
+pip install -U pip setuptools
+pip install tap-mongodb
+```
 
+## Set up Config file
+Create json file called `config.json`, with the following contents:
 ```
 {
-  "host": "localhost",
-  "port": "27017",
-  "user": "user",
-  "password": "pass",
-  "dbname": "<name of database>"
+  "password": "<password>",
+  "user": "<username>",
+  "host": "<host ip address>",
+  "port": "<port>",
+  "database": "<database name>",
 }
 ```
 
-## Run the tap in Discovery Mode
+All of the above attributes are required by the tap to connect to your mongo instance. 
 
+## Run in discovery mode
+Run the following command and redirect the output into the catalog file
 ```
-tap-mongodb --config config.json --discover                # Should dump a Catalog to sdtout
-tap-mongodb --config config.json --discover > catalog.json # Capture the Catalog
+tap-mongodb --config ~/config.json --discover > ~/catalog.json
 ```
 
-## Add Metadata to the Catalog
-
-Each entry under the Catalog's "stream" key will need the following metadata:
-
+Your catalog file should now look like this:
 ```
 {
   "streams": [
     {
-      "stream_name": "people"
-      "metadata": [{
-        "breadcrumb": [],
-        "metadata": {
-          "selected": true,
-          "replication-method": "FULL_TABLE",
-          "custom-select-clause": "name,age,birthday,address,city,state,zip"
+      "table_name": "<table name>",
+      "tap_stream_id": "<tap_stream_id>",
+      "metadata": [
+        {
+          "breadcrumb": [],
+          "metadata": {
+            "row-count":<int>,
+            "is-view": <bool>,
+            "database-name": "<database name>",
+            "table-key-properties": [
+              "_id"
+            ],
+            "valid-replication-keys": [
+              "_id"
+            ]
+          }
         }
-      }]
+      ],
+      "stream": "<stream name>",
+      "schema": {
+        "type": "object"
+      }
     }
   ]
 }
 ```
 
-A stream needs top level (no breadcrumb) metadata that describes the following:
-
-* replication-method
-  * LOG_BASED: will use Mongo's Oplog
-  * FULL_TABLE: will sync the entire table on every tap run
-* custom-select-clause
-  * a comma delimited list of columns in the table's data that will be selected and output during the run
-
-
-## Run the tap in Sync Mode
+## Edit Catalog file
+### Using valid json, edit the config.json file
+To select a stream, enter the following to the stream's metadata:
 ```
-tap-mongodb --config config.json --properties catalog.json
+"selected": true,
+"replication-method": <replication method>,
 ```
+
+`<replication-method>` must be either `FULL_TABLE` or `LOG_BASED`
+
+To add a projection to a stream, add the following to the stream's metadata field:
+```
+"tap-mongodb.projection": <projection>
+```
+
+For example, if you were to edit the example stream to select the stream as well as add a projection, config.json should look this:
+```
+{
+  "streams": [
+    {
+      "table_name": "<table name>",
+      "tap_stream_id": "<tap_stream_id>",
+      "metadata": [
+        {
+          "breadcrumb": [],
+          "metadata": {
+            "row-count": <int>,
+            "is-view": <bool>,
+            "database-name": "<database name>",
+            "table-key-properties": [
+              "_id"
+            ],
+            "valid-replication-keys": [
+              "_id"
+            ],
+            "selected": true,
+            "replication-method": "<replication method>",
+            "tap-mongodb.projection": "<projection>"
+          }
+        }
+      ],
+      "stream": "<stream name>",
+      "schema": {
+        "type": "object"
+      }
+    }
+  ]
+}
+
+```
+## Run in sync mode:
+`tap-mongodb --config ~/config.json --catalog ~/catalog.json`
 
 The tap will write bookmarks to stdout which can be captured and passed as an optional `--state state.json` parameter to the tap for the next sync.
 
+## Supplemental MongoDB Info
+
+### Local MongoDB Setup
+If you haven't yet set up a local mongodb client, follow [these instructions](https://github.com/singer-io/tap-mongodb/blob/master/spikes/local_mongo_setup.md)
 ---
 
 Copyright &copy; 2019 Stitch
