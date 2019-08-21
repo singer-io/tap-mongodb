@@ -116,7 +116,7 @@ def get_streams_to_sync(client, streams, state):
     if currently_syncing:
         currently_syncing_stream = list(filter(
             lambda s: s['tap_stream_id'] == currently_syncing,
-            streams_with_state))
+            ordered_streams))
         non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id'] != currently_syncing, ordered_streams))
 
         streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
