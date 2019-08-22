@@ -104,11 +104,15 @@ def get_sync_summary(catalog):
         db_name = stream_metadata.get("database-name")
         collection_name = stream.get("table_name")
         replication_method = stream_metadata.get('replication-method')
+
+        stream_time = TIMES[stream_id]
+        if stream_time == 0:
+            stream_time = 0.000001
         row = [db_name,
                collection_name,
                replication_method,
                '{} records'.format(stream_count),
-               '{:.1f} records/second'.format(stream_count/TIMES[stream_id])]
+               '{:.1f} records/second'.format(stream_count/stream_time)]
         rows.append(row)
 
     data = headers + rows
