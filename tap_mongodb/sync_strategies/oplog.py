@@ -2,9 +2,9 @@
 from bson import objectid, timestamp
 import copy
 import pymongo
+import time
 import singer
 from singer import metadata, metrics, utils
-
 import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
@@ -92,6 +92,7 @@ def sync_collection(client, stream, state, stream_projection):
 
     time_extracted = utils.now()
     rows_saved = 0
+    start_time = time.time()
 
     oplog_query = {
         'ts': {'$gte': oplog_ts},
@@ -112,6 +113,7 @@ def sync_collection(client, stream, state, stream_projection):
         tap_stream_id, oplog_query, base_projection))
 
     update_buffer = set()
+
     with client.local.oplog.rs.find(oplog_query, projection, oplog_replay=True) as cursor:
         for row in cursor:
             row_op = row['op']
@@ -174,4 +176,6 @@ def sync_collection(client, stream, state, stream_projection):
             singer.write_message(record_message)
             rows_saved += 1
 
+    common.COUNTS[tap_stream_id] += rows_saved
+    common.TIMES[tap_stream_id] += time.time()-start_time
     LOGGER.info('Syncd {} records for {}'.format(rows_saved, tap_stream_id))

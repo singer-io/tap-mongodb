@@ -7,7 +7,6 @@ import singer
 from singer import metadata, metrics, utils
 import tap_mongodb.sync_strategies.common as common
 
-
 LOGGER = singer.get_logger()
 
 def get_max_id_value(collection):
@@ -89,6 +88,8 @@ def sync_collection(client, stream, state, projection):
 
         time_extracted = utils.now()
 
+        start_time = time.time()
+
         for row in cursor:
             rows_saved += 1
 
@@ -104,10 +105,11 @@ def sync_collection(client, stream, state, projection):
                                           'last_id_fetched',
                                           str(row['_id']))
 
-
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                 singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
+        common.COUNTS[tap_stream_id] += rows_saved
+        common.TIMES[tap_stream_id] += time.time()-start_time
     # clear max pk value and last pk fetched upon successful sync
     singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
     singer.clear_bookmark(state, stream['tap_stream_id'], 'last_id_fetched')

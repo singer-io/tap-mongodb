@@ -4,6 +4,7 @@ import bson
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
+from terminaltables import AsciiTable
 
 import pytz
 import time
@@ -12,6 +13,8 @@ import decimal
 
 include_schemas_in_destination_stream_name = False
 UPDATE_BOOKMARK_PERIOD = 1000
+COUNTS = {}
+TIMES = {}
 
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
@@ -86,3 +89,29 @@ def row_to_singer_record(stream, row, version, time_extracted):
         record=row_to_persist,
         version=version,
         time_extracted=time_extracted)
+
+def get_sync_summary(catalog):
+    headers = [['database',
+                'collection',
+                'replication method',
+                'total records',
+                'write speed']]
+
+    rows = []
+    for stream_id, stream_count in COUNTS.items():
+        stream = [x for x in catalog['streams'] if x['tap_stream_id'] == stream_id][0]
+        stream_metadata = metadata.to_map(stream['metadata']).get(())
+        db_name = stream_metadata.get("database-name")
+        collection_name = stream.get("table_name")
+        replication_method = stream_metadata.get('replication-method')
+        row = [db_name,
+               collection_name,
+               replication_method,
+               '{} records'.format(stream_count),
+               '{:.1f} records/second'.format(stream_count/TIMES[stream_id])]
+        rows.append(row)
+
+    data = headers + rows
+    table = AsciiTable(data, title = 'Sync Summary')
+
+    return '\n\n' + table.table

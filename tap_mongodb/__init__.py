@@ -2,11 +2,13 @@
 import copy
 import json
 import sys
+import time
 from pymongo import MongoClient
 from bson import timestamp
 
 import singer
 from singer import metadata, metrics, utils
+
 import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
 import tap_mongodb.sync_strategies.oplog as oplog
@@ -14,12 +16,10 @@ import tap_mongodb.sync_strategies.oplog as oplog
 
 LOGGER = singer.get_logger()
 
-
 REQUIRED_CONFIG_KEYS = [
     'host',
     'port'
 ]
-
 
 IGNORE_DBS = ['admin', 'system', 'local', 'config']
 
@@ -62,6 +62,7 @@ def produce_collection_schema(collection):
         }
     }
 
+
 def do_discover(client):
     streams = []
 
@@ -94,11 +95,11 @@ def is_stream_selected(stream):
 
     return is_selected == True
 
+
 def get_streams_to_sync(client, streams, state):
 
     # get selected streams
     selected_streams = list(filter(lambda s: is_stream_selected(s), streams))
-
     # prioritize streams that have not been processed
     streams_with_state = []
     streams_without_state = []
@@ -132,8 +133,12 @@ def write_schema_message(stream):
         schema=stream['schema'],
         key_properties=['_id']))
 
+
 def sync_stream(client, stream, state):
     tap_stream_id = stream['tap_stream_id']
+
+    common.COUNTS[tap_stream_id] = 0
+    common.TIMES[tap_stream_id] = 0
 
     md_map = metadata.to_map(stream['metadata'])
     stream_metadata = md_map.get(())
@@ -192,6 +197,8 @@ def do_sync(client, catalog, state):
 
     for stream in streams_to_sync:
         sync_stream(client, stream, state)
+
+    LOGGER.info(common.get_sync_summary(catalog))
 
 
 def main_impl():
