@@ -73,6 +73,11 @@ def sync_collection(client, stream, state, projection):
         find_filter['$gte'] = objectid.ObjectId(last_id_fetched)
 
 
+    if projection and projection.get('_id') == 0:
+        projection.pop('_id')
+    if len(projection)==0:
+        projection=None
+
     query_message = 'Querying {} with:\n\tFind Parameters: {}'.format(
         stream['tap_stream_id'],
         find_filter)

@@ -53,13 +53,48 @@ def update_bookmarks(state, tap_stream_id, ts):
 
     return state
 
-
 def transform_projection(projection):
+    base_projection = {
+        "ts": 1, "ns": 1, "op": 1, 'o2': 1
+    }
     new_projection = {}
-    for field,value in projection.items():
-        new_projection['o.'+field] = value
-    new_projection['o._id'] = 1
-    return new_projection
+
+
+    # If no projection was provided, return base_projection with 'o' whitelisted
+    if not projection:
+        new_projection = base_projection
+        new_projection['o'] = 1
+        return new_projection
+
+    temp_projection = {k:v for k,v in projection.items() if k!='_id'}
+    is_whitelist = sum([v for k,v in temp_projection.items()]) > 0
+
+    # If only '_id' is included in projection
+    if len(temp_projection)==0:
+
+        # If only '_id' is whitelisted, return base projection with 'o._id' whitelisted
+        if projection['_id'] == 1:
+            new_projection = base_projection
+            new_projection['o._id'] = 1
+            return new_projection
+        # If only '_id' is blacklisted, return base projection with 'o' whitelisted
+        else:
+            new_projection = base_projection
+            new_projection['o'] = 1
+            return new_projection
+
+    # If whitelist is provided, return base projection along with whitelisted fields and whitelisted id
+    if is_whitelist:
+        new_projection = base_projection
+        for field,value in temp_projection.items():
+            new_projection['o.'+field] = value
+        new_projection['o._id'] = 1
+        return new_projection
+    # If blacklist is provided, return blacklisted fields with _id whitelisted
+    else:
+        for field,value in temp_projection.items():
+            new_projection['o.'+field] = value
+        return new_projection
 
 
 def flush_buffer(client, update_buffer, stream_projection, db_name, collection_name):
@@ -100,21 +135,20 @@ def sync_collection(client, stream, state, stream_projection):
         'ns': '{}.{}'.format(database_name, collection_name)
     }
 
-    base_projection = {
-        "ts": 1, "ns": 1, "op": 1, 'o2': 1
-    }
-    if stream_projection:
-        projection = base_projection.update(transform_projection(stream_projection))
-    else:
-        projection = base_projection
-        projection['o'] = 1
+    projection = transform_projection(stream_projection)
+
+    # _id is the key-property so don't let it get turned off
+    if stream_projection and stream_projection.get('_id') == 0:
+        stream_projection.pop('_id')
+    if len(stream_projection) == 0:
+        stream_projection = None
 
     LOGGER.info('Querying {} with:\n\tFind Parameters: {}\n\tProjection: {}'.format(
-        tap_stream_id, oplog_query, base_projection))
+        tap_stream_id, oplog_query, projection))
 
     update_buffer = set()
 
-    with client.local.oplog.rs.find(oplog_query, projection, oplog_replay=True) as cursor:
+    with client.local.oplog.rs.find(oplog_query, projection) as cursor:
         for row in cursor:
             row_op = row['op']
             if row_op == 'i':
