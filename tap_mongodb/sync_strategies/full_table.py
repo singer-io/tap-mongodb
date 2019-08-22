@@ -75,7 +75,7 @@ def sync_collection(client, stream, state, projection):
 
     if projection and projection.get('_id') == 0:
         projection.pop('_id')
-    if len(projection)==0:
+    if projection and len(projection)==0:
         projection=None
 
     query_message = 'Querying {} with:\n\tFind Parameters: {}'.format(

@@ -140,7 +140,7 @@ def sync_collection(client, stream, state, stream_projection):
     # _id is the key-property so don't let it get turned off
     if stream_projection and stream_projection.get('_id') == 0:
         stream_projection.pop('_id')
-    if len(stream_projection) == 0:
+    if stream_projection and len(stream_projection) == 0:
         stream_projection = None
 
     LOGGER.info('Querying {} with:\n\tFind Parameters: {}\n\tProjection: {}'.format(
