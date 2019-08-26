@@ -142,6 +142,7 @@ def sync_stream(client, stream, state):
 
     md_map = metadata.to_map(stream['metadata'])
     stream_metadata = md_map.get(())
+
     replication_method = stream_metadata.get('replication-method')
     database_name = stream_metadata.get('database-name')
 
@@ -150,9 +151,15 @@ def sync_stream(client, stream, state):
     stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'],{})
 
     if stream_projection:
-        stream_projection = json.loads(stream_projection)
+        try:
+            stream_projection = json.loads(stream_projection)
+        except:
+            raise common.InvalidProjectionException("The projection provided is not valid JSON")
     else:
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
+
+    if stream_projection and stream_projection.get('_id') == 0:
+        raise common.InvalidProjectionException("Projection blacklists key property id")
 
     # Emit a state message to indicate that we've started this stream
     state = singer.set_currently_syncing(state, stream['tap_stream_id'])

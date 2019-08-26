@@ -61,7 +61,7 @@ def transform_projection(projection):
 
 
     # If no projection was provided, return base_projection with 'o' whitelisted
-    if not projection:
+    if projection is None:
         new_projection = base_projection
         new_projection['o'] = 1
         return new_projection
@@ -71,17 +71,10 @@ def transform_projection(projection):
 
     # If only '_id' is included in projection
     if len(temp_projection)==0:
-
         # If only '_id' is whitelisted, return base projection with 'o._id' whitelisted
-        if projection['_id'] == 1:
-            new_projection = base_projection
-            new_projection['o._id'] = 1
-            return new_projection
-        # If only '_id' is blacklisted, return base projection with 'o' whitelisted
-        else:
-            new_projection = base_projection
-            new_projection['o'] = 1
-            return new_projection
+        new_projection = base_projection
+        new_projection['o._id'] = 1
+        return new_projection
 
     # If whitelist is provided, return base projection along with whitelisted fields and whitelisted id
     if is_whitelist:

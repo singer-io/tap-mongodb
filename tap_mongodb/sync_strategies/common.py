@@ -16,6 +16,9 @@ UPDATE_BOOKMARK_PERIOD = 1000
 COUNTS = {}
 TIMES = {}
 
+class InvalidProjectionException(Exception):
+    """Raised if projection blacklists _id"""
+
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
     if include_schemas_in_destination_stream_name:
