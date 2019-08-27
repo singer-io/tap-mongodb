@@ -19,6 +19,9 @@ TIMES = {}
 class InvalidProjectionException(Exception):
     """Raised if projection blacklists _id"""
 
+class UnsupportedReplicationKeyType(Exception):
+    """Raised if key type is unsupported"""
+    
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
     if include_schemas_in_destination_stream_name:
@@ -42,6 +45,38 @@ def get_stream_version(tap_stream_id, state):
 
     return stream_version
 
+def class_to_string(bookmark_value, bookmark_type):
+    if bookmark_type == 'datetime':
+        timezone = tzlocal.get_localzone()
+        local_datetime = timezone.localize(bookmark_value)
+        utc_datetime = local_datetime.astimezone(pytz.UTC)
+        return utils.strftime(utc_datetime)
+    if bookmark_type == 'Timestamp':
+        return '{}.{}'.format(bookmark_value.time, bookmark_value.inc)
+    if bookmark_type in ['int', 'ObjectId', 'Decimal', 'float']:
+        return str(bookmark_value)
+    if bookmark_type == 'str':
+        return bookmark_value
+    raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type".format(bookmark_type))
+
+
+def string_to_class(str_value, type_value):
+    if type_value == 'datetime':
+        return singer.utils.strptime_with_tz(str_value)
+    if type_value == 'int':
+        return int(str_value)
+    if type_value == 'ObjectId':
+        return objectid.ObjectId(str_value)
+    if type_value == 'Decimal':
+        return decimal.Decimal(str_value)
+    if type_value == 'float':
+        return float(str_value)
+    if type_value == 'Timestamp':
+        split_value = str_value.split('.')
+        return bson.timestamp.Timestamp(int(split_value[0]), int(split_value[1]))
+    if type_value == 'str':
+        return str_val
+    raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type".format(bookmark_type))
 
 def transform_value(value):
     if isinstance(value, list):

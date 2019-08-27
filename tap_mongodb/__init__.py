@@ -12,6 +12,7 @@ from singer import metadata, metrics, utils
 import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
 import tap_mongodb.sync_strategies.oplog as oplog
+import tap_mongodb.sync_strategies.incremental as incremental
 
 
 LOGGER = singer.get_logger()
@@ -48,9 +49,9 @@ def produce_collection_schema(collection):
                 # index_field_info is a tuple of (field_name, sort_direction)
                 if index_field_info:
                     valid_replication_keys.append(index_field_info[0])
-        # TODO: For incremental replication, uncomment below code
-        #if valid_replication_keys:
-            #mdata = metadata.write(mdata, (), 'valid-replication-keys', valid_replication_keys)
+
+        if valid_replication_keys:
+            mdata = metadata.write(mdata, (), 'valid-replication-keys', valid_replication_keys)
 
     return {
         'table_name': collection_name,
@@ -89,6 +90,7 @@ def do_discover(client):
 
 def is_stream_selected(stream):
     mdata = metadata.to_map(stream['metadata'])
+
     stream_metadata = mdata.get(())
 
     is_selected = stream_metadata.get('selected')
@@ -190,8 +192,10 @@ def sync_stream(client, stream, state):
         elif replication_method == 'FULL_TABLE':
             full_table.sync_collection(client, stream, state,  stream_projection)
 
+        elif replication_method == 'INCREMENTAL':
+            incremental.sync_collection(client, stream, state, stream_projection)
         else:
-            raise Exception("only FULL_TABLE and LOG_BASED replication methods are supported (you passed {})".format(replication_method))
+            raise Exception("only FULL_TABLE, LOG_BASED, and INCREMENTAL replication methods are supported (you passed {})".format(replication_method))
 
     state = singer.set_currently_syncing(state, None)
 
