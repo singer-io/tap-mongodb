@@ -19,10 +19,56 @@ LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = [
     'host',
-    'port'
+    'port',
+    'user',
+    'password',
+    'database'
 ]
 
 IGNORE_DBS = ['admin', 'system', 'local', 'config']
+
+def get_databases(client, config):
+
+    # usersInfo Command returns object in shape:
+    # {
+    #     <some_other_keys>
+    #     'users': [
+    #         {
+    #             '_id': <auth_db>.<user>,
+    #             'db': <auth_db>,
+    #             'mechanisms': ['SCRAM-SHA-1', 'SCRAM-SHA-256'],
+    #             'roles': [{'db': 'admin', 'role': 'readWriteAnyDatabase'},
+    #                       {'db': 'local', 'role': 'read'}],
+    #             'user': <user>,
+    #             'userId': <userId>
+    #         }
+    #     ]
+    # }
+    user_info = client[config['database']].command({'usersInfo': config['user']})
+
+    can_read_all = False
+    db_names = []
+
+    users = [u for u in user_info.get('users') if u.get('user')==config['user']]
+    if len(users)!=1:
+        LOGGER.warning('Could not find any users for {}'.format(config['user']))
+        return []
+
+    for role_info in users[0].get('roles', []):
+        if role_info.get('role') in ['read', 'readWrite']:
+            if role_info.get('db'):
+                db_names.append(role_info['db'])
+        elif role_info.get('role') in ['readAnyDatabase', 'readWriteAnyDatabase']:
+            # If user has either of these roles they can query all databases
+            can_read_all = True
+            break
+
+    if can_read_all:
+        db_names =  client.list_database_names()
+
+    return [d for d in db_names if d not in IGNORE_DBS]
+
+
 
 def produce_collection_schema(collection):
     collection_name = collection.name
@@ -64,12 +110,10 @@ def produce_collection_schema(collection):
     }
 
 
-def do_discover(client):
+def do_discover(client, config):
     streams = []
 
-    database_names = client.list_database_names()
-    for db_name in [d for d in database_names
-                    if d not in IGNORE_DBS]:
+    for db_name in get_databases(client, config):
         db = client[db_name]
 
         collection_names = db.list_collection_names()
@@ -156,7 +200,9 @@ def sync_stream(client, stream, state):
         try:
             stream_projection = json.loads(stream_projection)
         except:
-            raise common.InvalidProjectionException("The projection provided is not valid JSON")
+            err_msg = "The projection: {} for stream {} is not valid json"
+            raise common.InvalidProjectionException(err_msg.format(stream_projection,
+                                                                   tap_stream_id))
     else:
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
 
@@ -228,7 +274,7 @@ def main_impl():
     common.include_schemas_in_destination_stream_name = (config.get('include_schemas_in_destination_stream_name') == 'true')
 
     if args.discover:
-         do_discover(client)
+         do_discover(client, config)
     elif args.catalog:
         state = args.state or {}
         do_sync(client, args.catalog.to_dict(), state)
