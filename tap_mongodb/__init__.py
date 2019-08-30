@@ -59,6 +59,7 @@ def get_databases(client, config):
             if role_info.get('db'):
                 db_names.append(role_info['db'])
         elif role_info.get('role') in ['readAnyDatabase', 'readWriteAnyDatabase']:
+            # If user has either of these roles they can query all databases
             can_read_all = True
             break
 
