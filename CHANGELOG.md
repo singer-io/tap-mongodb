@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+  * During key-based incremental sync, if replication-key changes, wipe state and resync table [#10](https://github.com/singer-io/tap-mongodb/pull/10)
+  * Only support replication keys of types `datetime`, `timestamp`, `integer`, `ObjectId` [#10](https://github.com/singer-io/tap-mongodb/pull/10)
+  * Only discover databases the user has read access for [#11](https://github.com/singer-io/tap-mongodb/pull/11)
+
 ## 0.1.0
  * Added key-based incremental sync [commit](https://github.com/singer-io/tap-mongodb/commit/b618b11d91e111680f70b402c6e94c9bf40c7b8f)
  
