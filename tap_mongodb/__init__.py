@@ -156,7 +156,9 @@ def sync_stream(client, stream, state):
         try:
             stream_projection = json.loads(stream_projection)
         except:
-            raise common.InvalidProjectionException("The projection provided is not valid JSON")
+            err_msg = "The projection: {} for stream {} is not valid json"
+            raise common.InvalidProjectionException(err_msg.format(stream_projection,
+                                                                   tap_stream_id))
     else:
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
 

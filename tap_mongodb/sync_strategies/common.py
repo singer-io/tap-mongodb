@@ -19,7 +19,7 @@ TIMES = {}
 class InvalidProjectionException(Exception):
     """Raised if projection blacklists _id"""
 
-class UnsupportedReplicationKeyType(Exception):
+class UnsupportedReplicationKeyTypeException(Exception):
     """Raised if key type is unsupported"""
     
 def calculate_destination_stream_name(stream):
