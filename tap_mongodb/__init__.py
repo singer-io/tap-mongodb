@@ -26,9 +26,32 @@ REQUIRED_CONFIG_KEYS = [
 ]
 
 IGNORE_DBS = ['admin', 'system', 'local', 'config']
+ROLES_WITHOUT_FIND_PRIVILEGES = {
+    'dbAdmin',
+    'userAdmin',
+    'clusterAdmin',
+    'clusterManager',
+    'clusterMonitor',
+    'hostManager',
+    'restore'
+}
+ROLES_WITH_FIND_PRIVILEGES = {
+    'read',
+    'readWrite',
+    'readAnyDatabase',
+    'readWriteAnyDatabase',
+    'dbOwner',
+    'backup',
+    'root'
+}
+ROLES_WITH_ALL_DB_FIND_PRIVILEGES = {
+    'readAnyDatabase',
+    'readWriteAnyDatabase',
+    'root'
+}
 
-def get_databases(client, config):
 
+def get_roles(client, config):
     # usersInfo Command returns object in shape:
     # {
     #     <some_other_keys>
@@ -46,28 +69,50 @@ def get_databases(client, config):
     # }
     user_info = client[config['database']].command({'usersInfo': config['user']})
 
-    can_read_all = False
-    db_names = []
-
     users = [u for u in user_info.get('users') if u.get('user')==config['user']]
     if len(users)!=1:
         LOGGER.warning('Could not find any users for {}'.format(config['user']))
         return []
 
-    for role_info in users[0].get('roles', []):
-        if role_info.get('role') in ['read', 'readWrite']:
-            if role_info.get('db'):
-                db_names.append(role_info['db'])
-        elif role_info.get('role') in ['readAnyDatabase', 'readWriteAnyDatabase']:
-            # If user has either of these roles they can query all databases
-            can_read_all = True
-            break
+    roles = []
+    for role in users[0].get('roles', []):
+        if role.get('role') is None:
+            continue
+
+        role_name = role['role']
+        # roles without find privileges
+        if role_name in ROLES_WITHOUT_FIND_PRIVILEGES:
+            continue
+
+        # roles with find privileges
+        elif role_name in ROLES_WITH_FIND_PRIVILEGES:
+            if role.get('db'):
+                roles.append(role)
+
+        # for custom roles, get the "sub-roles"
+        else:
+            role_info_list = client[config['database']].command({'rolesInfo': {'role': role_name,'db': config['database']}})
+            role_info = [r for r in role_info_list.get('roles', []) if r['role']==role_name]
+            if len(role_info) != 1:
+                continue
+            for sub_role in role_info[0].get('roles', []):
+                if sub_role.get('role') in ROLES_WITH_FIND_PRIVILEGES:
+                    if sub_role.get('db'):
+                        roles.append(sub_role)
+    return roles
+
+def get_databases(client, config):
+    roles = get_roles(client, config)
+    LOGGER.info('Roles: {}'.format(roles))
+
+    can_read_all = len([r for r in roles if r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES]) > 0
 
     if can_read_all:
-        db_names =  client.list_database_names()
-
-    return [d for d in db_names if d not in IGNORE_DBS]
-
+        db_names =  [d for d in client.list_database_names() if d not in IGNORE_DBS]
+    else:
+        db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
+    LOGGER.info('Datbases: {}'.format(db_names))
+    return db_names
 
 
 def produce_collection_schema(collection):
