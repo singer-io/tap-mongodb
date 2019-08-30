@@ -53,10 +53,8 @@ def class_to_string(bookmark_value, bookmark_type):
         return utils.strftime(utc_datetime)
     if bookmark_type == 'Timestamp':
         return '{}.{}'.format(bookmark_value.time, bookmark_value.inc)
-    if bookmark_type in ['int', 'ObjectId', 'Decimal', 'float']:
+    if bookmark_type in ['int', 'ObjectId']:
         return str(bookmark_value)
-    if bookmark_type == 'str':
-        return bookmark_value
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type".format(bookmark_type))
 
 
@@ -67,15 +65,9 @@ def string_to_class(str_value, type_value):
         return int(str_value)
     if type_value == 'ObjectId':
         return objectid.ObjectId(str_value)
-    if type_value == 'Decimal':
-        return decimal.Decimal(str_value)
-    if type_value == 'float':
-        return float(str_value)
     if type_value == 'Timestamp':
         split_value = str_value.split('.')
         return bson.timestamp.Timestamp(int(split_value[0]), int(split_value[1]))
-    if type_value == 'str':
-        return str_val
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type".format(bookmark_type))
 
 def transform_value(value):
