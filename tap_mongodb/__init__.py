@@ -252,7 +252,7 @@ def sync_stream(client, stream, state):
         LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
 
     if stream_projection and stream_projection.get('_id') == 0:
-        raise common.InvalidProjectionException("Projection blacklists key property id")
+        raise common.InvalidProjectionException("Projection blacklists key property id for collection {}".format(tap_stream_id))
 
     # Emit a state message to indicate that we've started this stream
     state = singer.set_currently_syncing(state, stream['tap_stream_id'])
