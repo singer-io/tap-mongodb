@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+import os
+import sys
+import argparse
+import subprocess
+from argparse import RawTextHelpFormatter
+
+image_name = "mongo"
+image_tag = "4.2.0-bionic"
+
+def start_container(name):
+    START_COMMAND = """
+    sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}"\
+        -p {2}:{2} --name {3} \
+        -d {4}:{5} --replSet rs0
+    """.format(os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
+               os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD'),
+               27017,
+               name,
+               image_name,
+               image_tag)
+
+    print("Starting Docker process mongo1 using command: {}".format(START_COMMAND))
+    proc = subprocess.run(START_COMMAND, shell=True)
+    if proc.returncode != 0:
+        sys.exit("Exited with code: {}, the docker process failed to start.".format(proc.returncode))
+    print("Process started successfully")
+
+def stop_container(name):
+    STOP_COMMAND = "sudo docker stop {0} && sudo docker rm {0}"
+
+    print("Stopping Docker process sql1")
+    proc = subprocess.run(STOP_COMMAND.format(name), shell=True)
+    if proc.returncode != 0:
+        sys.exit("Exited with code: {}, the docker process failed to stop.".format(proc.returncode))
+    print("Process stopped successfully")
+
+def connect_to_db(name):
+    IP_ADDR_COMMAND = "docker inspect {} | jq -r .[].NetworkSettings.IPAddress"
+    CONNECT_COMMAND = "docker run -it --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin"
+
+    print("Retrieving IP addr of mongodb container")
+    ip_addr = subprocess.check_output(IP_ADDR_COMMAND.format(name), shell=True).decode('utf-8').rstrip()
+    print(ip_addr)
+    print("Attempting to connect to running container using a mongo container")
+    connect_command_format = CONNECT_COMMAND.format(ip_addr,
+                                                    os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
+                                                    os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD'))
+    print(connect_command_format)
+    # NB: Using call instead of run here because it is blocking
+    #     This returns only an exit code.
+    returncode = subprocess.call(connect_command_format,
+                                 shell=True)
+    if returncode != 0:
+        sys.exit("Exited with code: {}, could not connect.".format(returncode))
+
+DESCRIPTION = """
+Manage docker instance for tap-mssql testing.
+
+Uses environment variables:
+    STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME
+    STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD
+"""
+parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=RawTextHelpFormatter)
+parser.add_argument('action', choices=['start','stop', 'connect'], help='action to perform with the container')
+parser.add_argument('--name', help="name assigned to running docker process", default='mongo1')
+
+def main():
+    parsed_args = parser.parse_args()
+    # Potential arguments to add: pull, changing docker cointainer, changing password
+    if parsed_args.action == 'start':
+        start_container(parsed_args.name)
+    elif parsed_args.action == 'stop':
+        stop_container(parsed_args.name)
+    elif parsed_args.action == 'connect':
+        connect_to_db(parsed_args.name)
+
+if __name__ == "__main__":
+    main()
