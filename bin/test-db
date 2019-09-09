@@ -3,6 +3,7 @@ import os
 import sys
 import argparse
 import subprocess
+import time
 from argparse import RawTextHelpFormatter
 
 image_name = "mongo"
@@ -21,27 +22,51 @@ def start_container(name):
                image_tag)
 
     print("Starting Docker process mongo1 using command: {}".format(START_COMMAND))
+
     proc = subprocess.run(START_COMMAND, shell=True)
     if proc.returncode != 0:
         sys.exit("Exited with code: {}, the docker process failed to start.".format(proc.returncode))
-    print("Process started successfully")
+    print("Process started successfully. Starting Oplog replication.")
+
+    # Sleeping to allow Mongo enough time to start up
+    time.sleep(5)
+
+    ip_addr = get_ip_addr(name)
+    CONFIGURE_COMMAND = """
+    docker run --rm mongo mongo --host {} \test -u {} -p {} --authenticationDatabase admin --eval {}
+    """.format(ip_addr,
+               os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
+               os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD',),
+               '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
+    print(CONFIGURE_COMMAND)
+    proc = subprocess.run(CONFIGURE_COMMAND, shell=True)
+    if proc.returncode != 0:
+        sys.exit("Exited with code: {}, the docker command failed.".format(proc.returncode))
+    print("Oploag configured correctly.")
+
+
+def get_ip_addr(name):
+    IP_ADDR_COMMAND = "docker inspect {} | jq -r .[].NetworkSettings.IPAddress"
+    print("Retrieving IP addr of mongodb container")
+    ip_addr = subprocess.check_output(IP_ADDR_COMMAND.format(name), shell=True).decode('utf-8').rstrip()
+    print(ip_addr)
+    return ip_addr
+
 
 def stop_container(name):
     STOP_COMMAND = "sudo docker stop {0} && sudo docker rm {0}"
 
-    print("Stopping Docker process sql1")
+    print("Stopping Docker process {}".format(name))
     proc = subprocess.run(STOP_COMMAND.format(name), shell=True)
     if proc.returncode != 0:
         sys.exit("Exited with code: {}, the docker process failed to stop.".format(proc.returncode))
     print("Process stopped successfully")
 
 def connect_to_db(name):
-    IP_ADDR_COMMAND = "docker inspect {} | jq -r .[].NetworkSettings.IPAddress"
     CONNECT_COMMAND = "docker run -it --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin"
 
-    print("Retrieving IP addr of mongodb container")
-    ip_addr = subprocess.check_output(IP_ADDR_COMMAND.format(name), shell=True).decode('utf-8').rstrip()
-    print(ip_addr)
+    ip_addr = get_ip_addr(name)
+
     print("Attempting to connect to running container using a mongo container")
     connect_command_format = CONNECT_COMMAND.format(ip_addr,
                                                     os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
