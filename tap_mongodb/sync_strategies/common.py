@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import datetime
 import time
 import bson
@@ -91,7 +92,8 @@ def transform_value(value):
     if isinstance(value, bson.int64.Int64):
         return int(value)
     if isinstance(value, bytes):
-        return value.decode()
+        # Return the original base64 encoded string
+        return base64.b64encode(value).decode('utf-8')
     if isinstance(value, datetime.datetime):
         timezone = tzlocal.get_localzone()
         local_datetime = timezone.localize(value)
