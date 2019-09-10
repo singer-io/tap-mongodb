@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: 205ecab11d4d #218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester
       - image: mongo:4.2.0-bionic
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -18,7 +18,7 @@ jobs:
             DOCKERIZE_VERSION: v0.3.0
       - run:
           name: Wait for db
-          command: dockerize -wait tcp://localhost:27017 -timeout 1m
+          command: dockerize -wait tcp://127.0.0.1:27017 -timeout 1m
       - run:
           name: 'Setup Mongo'
           command: |
@@ -41,7 +41,7 @@ jobs:
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             cd /root/project/
-            run-a-test --tap=/root/project/bin/tap-mssql \
+            run-a-test --tap=tap-mongodb \
                        --target=target-stitch \
                        --orchestrator=stitch-orchestrator \
                        --email=harrison+sandboxtest@stitchdata.com \

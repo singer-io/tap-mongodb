@@ -116,8 +116,9 @@ def transform_value(value):
 
 
 def row_to_singer_record(stream, row, version, time_extracted):
+    # pylint: disable=unidiomatic-typecheck
     row_to_persist = {k:transform_value(v) for k, v in row.items()
-                      if isinstance(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
+                      if type(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
 
     return singer.RecordMessage(
         stream=calculate_destination_stream_name(stream),
