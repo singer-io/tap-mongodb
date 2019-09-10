@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.2
+  * Encode bytes back to base64 strings as we do not know the encodings [#13](https://github.com/singer-io/tap-mongodb/pull/13)
+
 ## 0.1.1
   * During key-based incremental sync, if replication-key changes, wipe state and resync table [#10](https://github.com/singer-io/tap-mongodb/pull/10)
   * Only support replication keys of types `datetime`, `timestamp`, `integer`, `ObjectId` [#10](https://github.com/singer-io/tap-mongodb/pull/10)
