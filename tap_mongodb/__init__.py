@@ -69,9 +69,9 @@ def get_roles(client, config):
     # }
     user_info = client[config['database']].command({'usersInfo': config['user']})
 
-    users = [u for u in user_info.get('users') if u.get('user')==config['user']]
-    if len(users)!=1:
-        LOGGER.warning('Could not find any users for {}'.format(config['user']))
+    users = [u for u in user_info.get('users') if u.get('user') == config['user']]
+    if len(users) != 1:
+        LOGGER.warning('Could not find any users for %s', config['user'])
         return []
 
     roles = []
@@ -91,8 +91,9 @@ def get_roles(client, config):
 
         # for custom roles, get the "sub-roles"
         else:
-            role_info_list = client[config['database']].command({'rolesInfo': {'role': role_name,'db': config['database']}})
-            role_info = [r for r in role_info_list.get('roles', []) if r['role']==role_name]
+            role_info_list = client[config['database']].command(
+                {'rolesInfo': {'role': role_name, 'db': config['database']}})
+            role_info = [r for r in role_info_list.get('roles', []) if r['role'] == role_name]
             if len(role_info) != 1:
                 continue
             for sub_role in role_info[0].get('roles', []):
@@ -103,15 +104,15 @@ def get_roles(client, config):
 
 def get_databases(client, config):
     roles = get_roles(client, config)
-    LOGGER.info('Roles: {}'.format(roles))
+    LOGGER.info('Roles: %s', roles)
 
     can_read_all = len([r for r in roles if r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES]) > 0
 
     if can_read_all:
-        db_names =  [d for d in client.list_database_names() if d not in IGNORE_DBS]
+        db_names = [d for d in client.list_database_names() if d not in IGNORE_DBS]
     else:
         db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
-    LOGGER.info('Datbases: {}'.format(db_names))
+    LOGGER.info('Datbases: %s', db_names)
     return db_names
 
 
@@ -133,7 +134,7 @@ def produce_collection_schema(collection):
         valid_replication_keys = []
         coll_indexes = collection.index_information()
         # index_information() returns a map of index_name -> index_information
-        for index_name, index_info in coll_indexes.items():
+        for _, index_info in coll_indexes.items():
             # we don't support compound indexes
             if len(index_info.get('key')) == 1:
                 index_field_info = index_info.get('key')[0]
@@ -159,6 +160,7 @@ def do_discover(client, config):
     streams = []
 
     for db_name in get_databases(client, config):
+        # pylint: disable=invalid-name
         db = client[db_name]
 
         collection_names = db.list_collection_names()
@@ -171,7 +173,8 @@ def do_discover(client, config):
             if is_view:
                 continue
 
-            LOGGER.info("Getting collection info for db: " + db_name + ", collection: " + collection_name)
+            LOGGER.info("Getting collection info for db: %s, collection: %s",
+                        db_name, collection_name)
             streams.append(produce_collection_schema(collection))
 
     json.dump({'streams' : streams}, sys.stdout, indent=2)
@@ -184,20 +187,23 @@ def is_stream_selected(stream):
 
     is_selected = stream_metadata.get('selected')
 
+    # pylint: disable=singleton-comparison
     return is_selected == True
 
 
-def get_streams_to_sync(client, streams, state):
+def get_streams_to_sync(streams, state):
 
     # get selected streams
-    selected_streams = list(filter(lambda s: is_stream_selected(s), streams))
+    selected_streams = [s for s in streams if is_stream_selected(s)]
     # prioritize streams that have not been processed
     streams_with_state = []
     streams_without_state = []
     for stream in selected_streams:
-        stream_metadata = metadata.to_map(stream['metadata'])
         stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
-        streams_with_state.append(stream) if stream_state else streams_without_state.append(stream)
+        if stream_state:
+            streams_with_state.append(stream)
+        else:
+            streams_without_state.append(stream)
 
     ordered_streams = streams_without_state + streams_with_state
 
@@ -209,7 +215,9 @@ def get_streams_to_sync(client, streams, state):
         currently_syncing_stream = list(filter(
             lambda s: s['tap_stream_id'] == currently_syncing,
             ordered_streams))
-        non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id'] != currently_syncing, ordered_streams))
+        non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id']
+                                                    != currently_syncing,
+                                                    ordered_streams))
 
         streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
     else:
@@ -239,7 +247,7 @@ def sync_stream(client, stream, state):
 
     stream_projection = stream_metadata.get('tap-mongodb.projection')
 
-    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'],{})
+    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'], {})
 
     if stream_projection:
         try:
@@ -249,10 +257,12 @@ def sync_stream(client, stream, state):
             raise common.InvalidProjectionException(err_msg.format(stream_projection,
                                                                    tap_stream_id))
     else:
-        LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.', stream['tap_stream_id'])
+        LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.',
+                       stream['tap_stream_id'])
 
     if stream_projection and stream_projection.get('_id') == 0:
-        raise common.InvalidProjectionException("Projection blacklists key property id for collection {}".format(tap_stream_id))
+        raise common.InvalidProjectionException(
+            "Projection blacklists key property id for collection {}".format(tap_stream_id))
 
     # Emit a state message to indicate that we've started this stream
     state = singer.set_currently_syncing(state, stream['tap_stream_id'])
@@ -268,7 +278,8 @@ def sync_stream(client, stream, state):
 
             # make sure initial full table sync has been completed
             if not stream_state.get('initial_full_table_complete'):
-                LOGGER.info('Must complete full table sync before starting oplog replication for {}'.format(tap_stream_id))
+                LOGGER.info('Must complete full table sync before starting \
+                oplog replication for %s', tap_stream_id)
 
                 # mark current ts in oplog so tap has a starting point
                 # after the full table sync
@@ -281,12 +292,14 @@ def sync_stream(client, stream, state):
             oplog.sync_collection(client, stream, state, stream_projection)
 
         elif replication_method == 'FULL_TABLE':
-            full_table.sync_collection(client, stream, state,  stream_projection)
+            full_table.sync_collection(client, stream, state, stream_projection)
 
         elif replication_method == 'INCREMENTAL':
             incremental.sync_collection(client, stream, state, stream_projection)
         else:
-            raise Exception("only FULL_TABLE, LOG_BASED, and INCREMENTAL replication methods are supported (you passed {})".format(replication_method))
+            raise Exception(
+                "only FULL_TABLE, LOG_BASED, and INCREMENTAL replication \
+                methods are supported (you passed {})".format(replication_method))
 
     state = singer.set_currently_syncing(state, None)
 
@@ -295,7 +308,7 @@ def sync_stream(client, stream, state):
 
 def do_sync(client, catalog, state):
     all_streams = catalog['streams']
-    streams_to_sync = get_streams_to_sync(client, all_streams, state)
+    streams_to_sync = get_streams_to_sync(all_streams, state)
 
     for stream in streams_to_sync:
         sync_stream(client, stream, state)
@@ -307,19 +320,19 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
 
-    client =  MongoClient(host=config['host'],
-                          port=int(config['port']),
-                          username=config.get('user', None),
-                          password=config.get('password', None),
-                          authSource=config['database'],
-                          ssl=(config.get('ssl')=='true'),
-                          replicaset=config.get('replica_set', None))
+    client = MongoClient(host=config['host'],
+                         port=int(config['port']),
+                         username=config.get('user', None),
+                         password=config.get('password', None),
+                         authSource=config['database'],
+                         ssl=(config.get('ssl') == 'true'),
+                         replicaset=config.get('replica_set', None))
 
-
-    common.include_schemas_in_destination_stream_name = (config.get('include_schemas_in_destination_stream_name') == 'true')
+    common.include_schemas_in_destination_stream_name = \
+        (config.get('include_schemas_in_destination_stream_name') == 'true')
 
     if args.discover:
-         do_discover(client, config)
+        do_discover(client, config)
     elif args.catalog:
         state = args.state or {}
         do_sync(client, args.catalog.to_dict(), state)
