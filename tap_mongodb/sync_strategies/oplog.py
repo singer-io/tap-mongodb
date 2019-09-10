@@ -101,7 +101,6 @@ def flush_buffer(client, update_buffer, stream_projection, db_name, collection_n
             yield row
 
 
-# TODO: Refactor this to reduce the complexity
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def sync_collection(client, stream, state, stream_projection):
     tap_stream_id = stream['tap_stream_id']
