@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import datetime
+import time
 import bson
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
@@ -7,11 +8,9 @@ from singer import utils, metadata
 from terminaltables import AsciiTable
 
 import pytz
-import time
 import tzlocal
-import decimal
 
-include_schemas_in_destination_stream_name = False
+INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME = False
 UPDATE_BOOKMARK_PERIOD = 1000
 COUNTS = {}
 TIMES = {}
@@ -21,20 +20,20 @@ class InvalidProjectionException(Exception):
 
 class UnsupportedReplicationKeyTypeException(Exception):
     """Raised if key type is unsupported"""
-    
+
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
-    if include_schemas_in_destination_stream_name:
+    if INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME:
         return "{}_{}".format(s_md.get((), {}).get('database-name'), stream['stream'])
 
     return stream['stream']
 
 def whitelist_bookmark_keys(bookmark_key_set, tap_stream_id, state):
-    for bk in [non_whitelisted_bookmark_key
-               for non_whitelisted_bookmark_key
-               in state.get('bookmarks', {}).get(tap_stream_id, {}).keys()
-               if non_whitelisted_bookmark_key not in bookmark_key_set]:
-        singer.clear_bookmark(state, tap_stream_id, bk)
+    for bookmark_key in [non_whitelisted_bookmark_key
+                         for non_whitelisted_bookmark_key
+                         in state.get('bookmarks', {}).get(tap_stream_id, {}).keys()
+                         if non_whitelisted_bookmark_key not in bookmark_key_set]:
+        singer.clear_bookmark(state, tap_stream_id, bookmark_key)
 
 
 def get_stream_version(tap_stream_id, state):
@@ -55,7 +54,8 @@ def class_to_string(bookmark_value, bookmark_type):
         return '{}.{}'.format(bookmark_value.time, bookmark_value.inc)
     if bookmark_type in ['int', 'ObjectId']:
         return str(bookmark_value)
-    raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type".format(bookmark_type))
+    raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
+                                                 .format(bookmark_type))
 
 
 def string_to_class(str_value, type_value):
@@ -68,51 +68,56 @@ def string_to_class(str_value, type_value):
     if type_value == 'Timestamp':
         split_value = str_value.split('.')
         return bson.timestamp.Timestamp(int(split_value[0]), int(split_value[1]))
-    raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type".format(bookmark_type))
+    raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
+                                                 .format(type_value))
 
+
+# pylint: disable=too-many-return-statements
 def transform_value(value):
     if isinstance(value, list):
+        # pylint: disable=unnecessary-lambda
         return list(map(lambda v: transform_value(v), value))
-    elif isinstance(value, dict):
-        return {k:transform_value(v) for k,v in value.items()}
-    elif isinstance(value, objectid.ObjectId):
+    if isinstance(value, dict):
+        return {k:transform_value(v) for k, v in value.items()}
+    if isinstance(value, objectid.ObjectId):
         return str(value)
-    elif isinstance(value, bson_datetime.datetime):
+    if isinstance(value, bson_datetime.datetime):
         timezone = tzlocal.get_localzone()
         local_datetime = timezone.localize(value)
         utc_datetime = local_datetime.astimezone(pytz.UTC)
         return utils.strftime(utc_datetime)
-    elif isinstance(value, timestamp.Timestamp):
+    if isinstance(value, timestamp.Timestamp):
         return utils.strftime(value.as_datetime())
-    elif isinstance(value, bson.int64.Int64):
+    if isinstance(value, bson.int64.Int64):
         return int(value)
-    elif isinstance(value, bytes):
+    if isinstance(value, bytes):
         return value.decode()
-    elif isinstance(value, datetime.datetime):
+    if isinstance(value, datetime.datetime):
         timezone = tzlocal.get_localzone()
         local_datetime = timezone.localize(value)
         utc_datetime = local_datetime.astimezone(pytz.UTC)
         return utils.strftime(utc_datetime)
-    elif isinstance(value, bson.decimal128.Decimal128):
+    if isinstance(value, bson.decimal128.Decimal128):
         return value.to_decimal()
-    elif isinstance(value, bson.code.Code):
+    if isinstance(value, bson.code.Code):
         if value.scope:
             return {
                 'value': str(value),
                 'scope': str(value.scope)
             }
         return str(value)
-    elif isinstance(value, bson.regex.Regex):
+    if isinstance(value, bson.regex.Regex):
         return {
             'pattern': value.pattern,
             'flags': value.flags
         }
-    else:
-        return value
+
+    return value
 
 
 def row_to_singer_record(stream, row, version, time_extracted):
-    row_to_persist = {k:transform_value(v) for k,v in row.items() if type(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
+    row_to_persist = {k:transform_value(v) for k, v in row.items()
+                      if isinstance(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
 
     return singer.RecordMessage(
         stream=calculate_destination_stream_name(stream),
@@ -146,6 +151,6 @@ def get_sync_summary(catalog):
         rows.append(row)
 
     data = headers + rows
-    table = AsciiTable(data, title = 'Sync Summary')
+    table = AsciiTable(data, title='Sync Summary')
 
     return '\n\n' + table.table
