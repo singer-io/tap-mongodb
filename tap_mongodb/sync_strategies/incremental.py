@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-import time
-from bson import objectid
 import copy
+import time
 import pymongo
 import singer
-from singer import metadata, metrics, utils
+from singer import metadata, utils
 import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
@@ -26,9 +25,10 @@ def update_bookmark(row, state, tap_stream_id, replication_key_name):
                                       'replication_key_type',
                                       replication_key_type)
 
+# pylint: disable=too-many-locals, too-many-statements
 def sync_collection(client, stream, state, projection):
     tap_stream_id = stream['tap_stream_id']
-    LOGGER.info('Starting incremental sync for {}'.format(tap_stream_id))
+    LOGGER.info('Starting incremental sync for %s', tap_stream_id)
 
     stream_metadata = metadata.to_map(stream['metadata']).get(())
     collection = client[stream_metadata['database-name']][stream['stream']]
@@ -68,10 +68,12 @@ def sync_collection(client, stream, state, projection):
         replication_key_value_bookmark = stream_state.get('replication_key_value')
     else:
         if replication_key_name_bookmark is not None:
-            log_msg = "Replication Key changed from {} to {}, will re-replicate entire collection {}"
-            LOGGER.warning(log_msg.format(replication_key_name_bookmark,
-                                          replication_key_name_md,
-                                          tap_stream_id))
+            # pylint: disable=line-too-long
+            log_msg = "Replication Key changed from %s to %s, will re-replicate entire collection %s"
+            LOGGER.warning(log_msg,
+                           replication_key_name_bookmark,
+                           replication_key_name_md,
+                           tap_stream_id)
         replication_key_name_bookmark = replication_key_name_md
         state = singer.write_bookmark(state,
                                       tap_stream_id,
@@ -92,8 +94,9 @@ def sync_collection(client, stream, state, projection):
     if replication_key_value_bookmark:
         replication_key_type_bookmark = stream_state.get('replication_key_type')
         find_filter[replication_key_name_bookmark] = {}
-        find_filter[replication_key_name_bookmark]['$gte'] = common.string_to_class(replication_key_value_bookmark,
-                                                                             replication_key_type_bookmark)
+        find_filter[replication_key_name_bookmark]['$gte'] = \
+            common.string_to_class(replication_key_value_bookmark,
+                                   replication_key_type_bookmark)
 
 
     # log query
@@ -111,7 +114,6 @@ def sync_collection(client, stream, state, projection):
         time_extracted = utils.now()
         start_time = time.time()
         for row in cursor:
-
             record_message = common.row_to_singer_record(stream,
                                                          row,
                                                          stream_version,
@@ -131,4 +133,4 @@ def sync_collection(client, stream, state, projection):
 
     singer.write_message(activate_version_message)
 
-    LOGGER.info('Syncd {} records for {}'.format(rows_saved, tap_stream_id))
+    LOGGER.info('Syncd %s records for %s', rows_saved, tap_stream_id)

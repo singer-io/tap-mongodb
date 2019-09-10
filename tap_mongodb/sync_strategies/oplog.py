@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-from bson import objectid, timestamp
 import copy
-import pymongo
 import time
+import pymongo
 import singer
-from singer import metadata, metrics, utils
+from singer import metadata, utils
+
+from bson import timestamp
 import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
@@ -40,6 +41,8 @@ def oplog_has_aged_out(client, state, stream):
 
     return bookmarked_ts < earliest_ts
 
+
+# pylint: disable=invalid-name
 def update_bookmarks(state, tap_stream_id, ts):
     state = singer.write_bookmark(state,
                                   tap_stream_id,
@@ -66,28 +69,29 @@ def transform_projection(projection):
         new_projection['o'] = 1
         return new_projection
 
-    temp_projection = {k:v for k,v in projection.items() if k!='_id'}
-    is_whitelist = sum([v for k,v in temp_projection.items()]) > 0
+    temp_projection = {k:v for k, v in projection.items() if k != '_id'}
+    is_whitelist = sum([v for k, v in temp_projection.items()]) > 0
 
     # If only '_id' is included in projection
-    if len(temp_projection)==0:
+    if not temp_projection:
         # If only '_id' is whitelisted, return base projection with 'o._id' whitelisted
         new_projection = base_projection
         new_projection['o._id'] = 1
         return new_projection
 
-    # If whitelist is provided, return base projection along with whitelisted fields and whitelisted id
+    # If whitelist is provided, return base projection along
+    # with whitelisted fields and whitelisted id
     if is_whitelist:
         new_projection = base_projection
-        for field,value in temp_projection.items():
-            new_projection['o.'+field] = value
+        for field, value in temp_projection.items():
+            new_projection['o.' + field] = value
         new_projection['o._id'] = 1
         return new_projection
+
     # If blacklist is provided, return blacklisted fields with _id whitelisted
-    else:
-        for field,value in temp_projection.items():
-            new_projection['o.'+field] = value
-        return new_projection
+    for field, value in temp_projection.items():
+        new_projection['o.' + field] = value
+    return new_projection
 
 
 def flush_buffer(client, update_buffer, stream_projection, db_name, collection_name):
@@ -97,9 +101,10 @@ def flush_buffer(client, update_buffer, stream_projection, db_name, collection_n
             yield row
 
 
+# pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def sync_collection(client, stream, state, stream_projection):
     tap_stream_id = stream['tap_stream_id']
-    LOGGER.info('Starting oplog sync for {}'.format(tap_stream_id))
+    LOGGER.info('Starting oplog sync for %s', tap_stream_id)
 
     md_map = metadata.to_map(stream['metadata'])
     stream_metadata = md_map.get(())
@@ -133,11 +138,11 @@ def sync_collection(client, stream, state, stream_projection):
     # _id is the key-property so don't let it get turned off
     if stream_projection and stream_projection.get('_id') == 0:
         stream_projection.pop('_id')
-    if stream_projection and len(stream_projection) == 0:
+    if stream_projection and not stream_projection:
         stream_projection = None
 
-    LOGGER.info('Querying {} with:\n\tFind Parameters: {}\n\tProjection: {}'.format(
-        tap_stream_id, oplog_query, projection))
+    LOGGER.info('Querying %s with:\n\tFind Parameters: %s\n\tProjection: %s',
+                tap_stream_id, oplog_query, projection)
 
     update_buffer = set()
 
@@ -146,7 +151,10 @@ def sync_collection(client, stream, state, stream_projection):
             row_op = row['op']
             if row_op == 'i':
 
-                record_message = common.row_to_singer_record(stream, row['o'], version, time_extracted)
+                record_message = common.row_to_singer_record(stream,
+                                                             row['o'],
+                                                             version,
+                                                             time_extracted)
                 singer.write_message(record_message)
 
                 rows_saved += 1
@@ -163,12 +171,16 @@ def sync_collection(client, stream, state, stream_projection):
                 # Delete ops only contain the _id of the row deleted
                 row['o'][SDC_DELETED_AT] = row['ts']
 
-                record_message = common.row_to_singer_record(stream, row['o'], version, time_extracted)
+                record_message = common.row_to_singer_record(stream,
+                                                             row['o'],
+                                                             version,
+                                                             time_extracted)
                 singer.write_message(record_message)
 
                 rows_saved += 1
             else:
-                LOGGER.info("Skipping op for table %s as it is not an INSERT, UPDATE, or DELETE", row['ns'])
+                LOGGER.info("Skipping op for table %s as it is not an \
+                INSERT, UPDATE, or DELETE", row['ns'])
 
             state = update_bookmarks(state,
                                      tap_stream_id,
@@ -176,8 +188,15 @@ def sync_collection(client, stream, state, stream_projection):
 
             # flush buffer if it has filled up
             if len(update_buffer) >= MAX_UPDATE_BUFFER_LENGTH:
-                for row in flush_buffer(client, update_buffer, stream_projection, database_name, collection_name):
-                    record_message = common.row_to_singer_record(stream, row, version, time_extracted)
+                for buffered_row in flush_buffer(client,
+                                                 update_buffer,
+                                                 stream_projection,
+                                                 database_name,
+                                                 collection_name):
+                    record_message = common.row_to_singer_record(stream,
+                                                                 buffered_row,
+                                                                 version,
+                                                                 time_extracted)
                     singer.write_message(record_message)
 
                     rows_saved += 1
@@ -186,8 +205,15 @@ def sync_collection(client, stream, state, stream_projection):
             # write state every UPDATE_BOOKMARK_PERIOD messages
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                 # flush buffer before writing state
-                for row in flush_buffer(client, update_buffer, stream_projection, database_name, collection_name):
-                    record_message = common.row_to_singer_record(stream, row, version, time_extracted)
+                for buffered_row in flush_buffer(client,
+                                                 update_buffer,
+                                                 stream_projection,
+                                                 database_name,
+                                                 collection_name):
+                    record_message = common.row_to_singer_record(stream,
+                                                                 buffered_row,
+                                                                 version,
+                                                                 time_extracted)
                     singer.write_message(record_message)
 
                     rows_saved += 1
@@ -197,12 +223,19 @@ def sync_collection(client, stream, state, stream_projection):
                 singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
         # flush buffer if finished with oplog
-        for row in flush_buffer(client, update_buffer, stream_projection, database_name, collection_name):
-            record_message = common.row_to_singer_record(stream, row, version, time_extracted)
+        for buffered_row in flush_buffer(client,
+                                         update_buffer,
+                                         stream_projection,
+                                         database_name,
+                                         collection_name):
+            record_message = common.row_to_singer_record(stream,
+                                                         buffered_row,
+                                                         version,
+                                                         time_extracted)
 
             singer.write_message(record_message)
             rows_saved += 1
 
     common.COUNTS[tap_stream_id] += rows_saved
     common.TIMES[tap_stream_id] += time.time()-start_time
-    LOGGER.info('Syncd {} records for {}'.format(rows_saved, tap_stream_id))
+    LOGGER.info('Syncd %s records for %s', rows_saved, tap_stream_id)

@@ -15,6 +15,13 @@ setup(name='tap-mongodb',
           'tzlocal==2.0.0',
           'terminaltables==3.1.0',
       ],
+      extras_require={
+          'dev': [
+              'pylint',
+              'nose',
+              'ipdb'
+          ]
+      },
       entry_points='''
           [console_scripts]
           tap-mongodb=tap_mongodb:main
