@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
+import copy
 import time
 from bson import objectid
-import copy
 import pymongo
 import singer
-from singer import metadata, metrics, utils
+from singer import metadata, utils
 import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
@@ -13,9 +13,11 @@ def get_max_id_value(collection):
     row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
     return str(row['_id'])
 
+
+# pylint: disable=too-many-locals,invalid-name
 def sync_collection(client, stream, state, projection):
     tap_stream_id = stream['tap_stream_id']
-    LOGGER.info('Starting full table sync for {}'.format(tap_stream_id))
+    LOGGER.info('Starting full table sync for %s', tap_stream_id)
 
     mdata = metadata.to_map(stream['metadata'])
     stream_metadata = mdata.get(())
@@ -56,8 +58,8 @@ def sync_collection(client, stream, state, projection):
         singer.write_message(activate_version_message)
 
     max_id_value = singer.get_bookmark(state,
-                                        stream['tap_stream_id'],
-                                        'max_id_value') or get_max_id_value(collection)
+                                       stream['tap_stream_id'],
+                                       'max_id_value') or get_max_id_value(collection)
 
     last_id_fetched = singer.get_bookmark(state,
                                           stream['tap_stream_id'],
@@ -77,6 +79,7 @@ def sync_collection(client, stream, state, projection):
         find_filter)
     if projection:
         query_message += '\n\tProjection: {}'.format(projection)
+    # pylint: disable=logging-format-interpolation
     LOGGER.info(query_message)
 
 
