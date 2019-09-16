@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import copy
 import time
-from bson import objectid
 import pymongo
 import singer
 from singer import metadata, utils
@@ -15,7 +14,7 @@ def get_max_id_value(collection):
     id_value = row['_id']
     return id_value
 
-# pylint: disable=too-many-locals,invalid-name
+# pylint: disable=too-many-locals,invalid-name,too-many-statements
 def sync_collection(client, stream, state, projection):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting full table sync for %s', tap_stream_id)

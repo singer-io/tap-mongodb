@@ -56,7 +56,7 @@ def class_to_string(bookmark_value, bookmark_type):
     if bookmark_type in ['int', 'ObjectId']:
         return str(bookmark_value)
     if bookmark_type == 'bytes':
-        return base64.b64encode(value).decode('utf-8')
+        return base64.b64encode(bookmark_value).decode('utf-8')
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(bookmark_type))
 
