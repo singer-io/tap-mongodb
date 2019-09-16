@@ -13,9 +13,6 @@ LOGGER = singer.get_logger()
 def get_max_id_value(collection):
     row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
     id_value = row['_id']
-    id_type = id_value.__class__.__name__
-    # Should this just return id_value?
-    #return common.string_to_class(st
     return id_value
 
 # pylint: disable=too-many-locals,invalid-name
@@ -55,7 +52,6 @@ def sync_collection(client, stream, state, projection):
         version=stream_version
     )
 
-
     # For the initial replication, emit an ACTIVATE_VERSION message
     # at the beginning so the records show up right away.
     if first_run:
@@ -70,12 +66,10 @@ def sync_collection(client, stream, state, projection):
     else:
         max_id_value = get_max_id_value(collection)
 
-    # this might need to change too.
     last_id_fetched = singer.get_bookmark(state,
                                           stream['tap_stream_id'],
                                           'last_id_fetched')
 
-    # also write the type
     state = singer.write_bookmark(state,
                                   stream['tap_stream_id'],
                                   'max_id_value',
@@ -85,12 +79,12 @@ def sync_collection(client, stream, state, projection):
                                   'max_id_type',
                                   max_id_value.__class__.__name__)
 
-
-    # replace this with class
     find_filter = {'$lte': max_id_value}
     if last_id_fetched:
-        # replace this with class
-        find_filter['$gte'] = objectid.ObjectId(last_id_fetched)
+        last_id_fetched_type = singer.get_bookmark(state,
+                                                   stream['tap_stream_id'],
+                                                   'last_id_fetched_type')
+        find_filter['$gte'] = common.string_to_class(last_id_fetched, last_id_fetched_type)
 
     query_message = 'Querying {} with:\n\tFind Parameters: {}'.format(
         stream['tap_stream_id'],
