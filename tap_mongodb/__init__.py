@@ -273,8 +273,8 @@ def sync_stream(client, stream, state):
 
             # make sure initial full table sync has been completed
             if not stream_state.get('initial_full_table_complete'):
-                LOGGER.info('Must complete full table sync before starting' +
-                            'oplog replication for %s', tap_stream_id)
+                msg = 'Must complete full table sync before starting oplog replication for %s'
+                LOGGER.info(msg, tap_stream_id)
 
                 # mark current ts in oplog so tap has a starting point
                 # after the full table sync
