@@ -196,8 +196,7 @@ def get_streams_to_sync(streams, state):
     streams_with_state = []
     streams_without_state = []
     for stream in selected_streams:
-        stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
-        if stream_state:
+        if state.get('bookmarks', {}).get(stream['tap_stream_id']):
             streams_with_state.append(stream)
         else:
             streams_without_state.append(stream)
@@ -242,8 +241,6 @@ def sync_stream(client, stream, state):
     database_name = metadata.get(md_map, (), 'database-name')
     stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
 
-    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'], {})
-
     if stream_projection:
         try:
             stream_projection = json.loads(stream_projection)
@@ -270,9 +267,15 @@ def sync_stream(client, stream, state):
         timer.tags['table'] = stream['table_name']
 
         if replication_method == 'LOG_BASED':
+            if oplog.oplog_has_aged_out(client, state, tap_stream_id):
+                # remove all state for stream
+                # then it will do a full sync and start oplog again.
+                LOGGER.info("Clearing state because Oplog has aged out")
+                state.get('bookmarks', {}).pop(tap_stream_id)
 
             # make sure initial full table sync has been completed
-            if not stream_state.get('initial_full_table_complete'):
+            if not state.get('bookmarks', {}).get(tap_stream_id, {}) \
+                                             .get('initial_full_table_complete'):
                 msg = 'Must complete full table sync before starting oplog replication for %s'
                 LOGGER.info(msg, tap_stream_id)
 
@@ -283,7 +286,6 @@ def sync_stream(client, stream, state):
 
                 full_table.sync_collection(client, stream, state, stream_projection)
 
-            #TODO: Check if oplog has aged out here
             oplog.sync_collection(client, stream, state, stream_projection)
 
         elif replication_method == 'FULL_TABLE':
