@@ -147,9 +147,9 @@ def get_sync_summary(catalog):
     for stream_id, stream_count in COUNTS.items():
         stream = [x for x in catalog['streams'] if x['tap_stream_id'] == stream_id][0]
         collection_name = stream.get("table_name")
-        stream_metadata = metadata.to_map(stream['metadata']).get(())
-        db_name = stream_metadata.get("database-name")
-        replication_method = stream_metadata.get('replication-method')
+        md_map = metadata.to_map(stream['metadata'])
+        db_name = metadata.get(md_map, (), 'database-name')
+        replication_method = metadata.get(md_map, (), 'replication-method')
 
         stream_time = TIMES[stream_id]
         if stream_time == 0:

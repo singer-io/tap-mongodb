@@ -182,10 +182,7 @@ def do_discover(client, config):
 
 def is_stream_selected(stream):
     mdata = metadata.to_map(stream['metadata'])
-
-    stream_metadata = mdata.get(())
-
-    is_selected = stream_metadata.get('selected')
+    is_selected = metadata.get(mdata, (), 'selected')
 
     # pylint: disable=singleton-comparison
     return is_selected == True
@@ -240,12 +237,10 @@ def sync_stream(client, stream, state):
     common.TIMES[tap_stream_id] = 0
 
     md_map = metadata.to_map(stream['metadata'])
-    stream_metadata = md_map.get(())
 
-    replication_method = stream_metadata.get('replication-method')
-    database_name = stream_metadata.get('database-name')
-
-    stream_projection = stream_metadata.get('tap-mongodb.projection')
+    replication_method = metadata.get(md_map, (), 'replication-method')
+    database_name = metadata.get(md_map, (), 'database-name')
+    stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
 
     stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'], {})
 
@@ -278,12 +273,12 @@ def sync_stream(client, stream, state):
 
             # make sure initial full table sync has been completed
             if not stream_state.get('initial_full_table_complete'):
-                LOGGER.info('Must complete full table sync before starting \
-                oplog replication for %s', tap_stream_id)
+                msg = 'Must complete full table sync before starting oplog replication for %s'
+                LOGGER.info(msg, tap_stream_id)
 
                 # mark current ts in oplog so tap has a starting point
                 # after the full table sync
-                collection_oplog_ts = oplog.get_latest_collection_ts(client, stream)
+                collection_oplog_ts = oplog.get_latest_ts(client)
                 oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
                 full_table.sync_collection(client, stream, state, stream_projection)
