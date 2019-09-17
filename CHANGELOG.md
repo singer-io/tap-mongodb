@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.6
+  * Fix a bug with supporting bookmarks of ObjectId [#17](https://github.com/singer-io/tap-mongodb/pull/17)
+
 ## 0.1.5
   * Check for cases when the Oplog may have aged out and execute a full resync [#16](https://github.com/singer-io/tap-mongodb/pull/16)
 
