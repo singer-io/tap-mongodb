@@ -69,7 +69,8 @@ def sync_collection(client, stream, state, projection):
     state = singer.write_bookmark(state,
                                   stream['tap_stream_id'],
                                   'max_id_value',
-                                  max_id_value)
+                                  common.class_to_string(max_id_value,
+                                                         max_id_value.__class__.__name__))
     state = singer.write_bookmark(state,
                                   stream['tap_stream_id'],
                                   'max_id_type',
@@ -111,11 +112,13 @@ def sync_collection(client, stream, state, projection):
             state = singer.write_bookmark(state,
                                           stream['tap_stream_id'],
                                           'last_id_fetched',
-                                          str(row['_id']))
+                                          common.class_to_string(row['_id'],
+                                                                 row['_id'].__class__.__name__))
             state = singer.write_bookmark(state,
                                           stream['tap_stream_id'],
                                           'last_id_fetched_type',
                                           row['_id'].__class__.__name__)
+
 
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                 singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
