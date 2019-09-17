@@ -18,9 +18,8 @@ def sync_collection(client, stream, state, projection):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting full table sync for %s', tap_stream_id)
 
-    mdata = metadata.to_map(stream['metadata'])
-    stream_metadata = mdata.get(())
-    database_name = stream_metadata['database-name']
+    md_map = metadata.to_map(stream['metadata'])
+    database_name = metadata.get(md_map, (), 'database-name')
 
     db = client[database_name]
     collection = db[stream['stream']]
