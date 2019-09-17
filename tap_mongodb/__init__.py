@@ -274,7 +274,8 @@ def sync_stream(client, stream, state):
                 state.get('bookmarks', {}).pop(tap_stream_id)
 
             # make sure initial full table sync has been completed
-            if not state.get('bookmarks', {}).get(tap_stream_id, {}).get('initial_full_table_complete'):
+            if not state.get('bookmarks', {}).get(tap_stream_id, {}) \
+                                             .get('initial_full_table_complete'):
                 msg = 'Must complete full table sync before starting oplog replication for %s'
                 LOGGER.info(msg, tap_stream_id)
 
