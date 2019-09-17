@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.5
+  * Check for cases when the Oplog may have aged out and execute a full resync [#16](https://github.com/singer-io/tap-mongodb/pull/16)
+
 ## 0.1.4
   * Get global oplog timestamp instead of collection-specific [#15](https://github.com/singer-io/tap-mongodb/pull/15)
 
