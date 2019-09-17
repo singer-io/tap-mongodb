@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.3
+  * Support several new types for the `_id` column aside from ObjectID [#14](https://github.com/singer-io/tap-mongodb/pull/14)
+
 ## 0.1.2
   * Encode bytes back to base64 strings as we do not know the encodings [#13](https://github.com/singer-io/tap-mongodb/pull/13)
 
