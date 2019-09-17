@@ -57,6 +57,8 @@ def class_to_string(bookmark_value, bookmark_type):
         return str(bookmark_value)
     if bookmark_type == 'bytes':
         return base64.b64encode(bookmark_value).decode('utf-8')
+    if bookmark_type == 'str':
+        return str(bookmark_value)
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(bookmark_type))
 
@@ -73,6 +75,8 @@ def string_to_class(str_value, type_value):
         return bson.timestamp.Timestamp(int(split_value[0]), int(split_value[1]))
     if type_value == 'bytes':
         return base64.b64decode(str_value.encode())
+    if type_value == 'str':
+        return str(str_value)
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(type_value))
 
