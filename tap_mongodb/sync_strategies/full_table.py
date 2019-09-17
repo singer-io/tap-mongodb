@@ -8,7 +8,6 @@ import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
 
-# This code has to change somehow
 def get_max_id_value(collection):
     row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
     id_value = row['_id']
@@ -56,7 +55,6 @@ def sync_collection(client, stream, state, projection):
     if first_run:
         singer.write_message(activate_version_message)
 
-    # retrieving the bookmark needs to come back as a class too. common.string_to_class
     if singer.get_bookmark(state, stream['tap_stream_id'], 'max_id_value'):
         # There is a bookmark
         max_id_value = singer.get_bookmark(state, stream['tap_stream_id'], 'max_id_value')
