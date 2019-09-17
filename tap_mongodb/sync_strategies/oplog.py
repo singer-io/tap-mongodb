@@ -18,17 +18,15 @@ def get_latest_ts(client):
     return row.get('ts')
 
 
-def oplog_has_aged_out(client, state, stream):
-    md_map = metadata.to_map(stream['metadata'])
-    db_name = metadata.get(md_map, (), 'database-name')
-    collection_name = stream.get("table_name")
+def oplog_has_aged_out(client, state, tap_stream_id):
+    earliest_ts_row = client.local.oplog.rs.find_one(sort=[('$natural', pymongo.ASCENDING)])
 
-    find_query = {'ns': '{}.{}'.format(db_name, collection_name)}
-    earliest_ts_row = client.local.oplog.rs.find_one(find_query,
-                                                     sort=[('$natural', pymongo.ASCENDING)])
     earliest_ts = earliest_ts_row.get('ts')
 
-    stream_state = state.get('bookmarks', {}).get(stream['tap_stream_id'])
+    stream_state = state.get('bookmarks', {}).get(tap_stream_id)
+    if not stream_state:
+        return False
+
     bookmarked_ts = timestamp.Timestamp(stream_state['oplog_ts_time'],
                                         stream_state['oplog_ts_inc'])
 
