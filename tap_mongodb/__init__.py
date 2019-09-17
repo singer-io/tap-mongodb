@@ -283,7 +283,7 @@ def sync_stream(client, stream, state):
 
                 # mark current ts in oplog so tap has a starting point
                 # after the full table sync
-                collection_oplog_ts = oplog.get_latest_collection_ts(client, stream)
+                collection_oplog_ts = oplog.get_latest_ts(client)
                 oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
                 full_table.sync_collection(client, stream, state, stream_projection)

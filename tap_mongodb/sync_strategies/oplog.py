@@ -13,15 +13,8 @@ LOGGER = singer.get_logger()
 SDC_DELETED_AT = "_sdc_deleted_at"
 MAX_UPDATE_BUFFER_LENGTH = 500
 
-def get_latest_collection_ts(client, stream):
-    md_map = metadata.to_map(stream['metadata'])
-    stream_metadata = md_map.get(())
-    db_name = stream_metadata.get("database-name")
-    collection_name = stream.get("table_name")
-
-    find_query = {'ns': '{}.{}'.format(db_name, collection_name)}
-    row = client.local.oplog.rs.find_one(find_query,
-                                         sort=[('$natural', pymongo.DESCENDING)])
+def get_latest_ts(client):
+    row = client.local.oplog.rs.find_one(sort=[('$natural', pymongo.DESCENDING)])
     return row.get('ts')
 
 def oplog_has_aged_out(client, state, stream):
