@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.4
+  * Get global oplog timestamp instead of collection-specific [#15](https://github.com/singer-io/tap-mongodb/pull/15)
+
 ## 0.1.3
   * Support several new types for the `_id` column aside from ObjectID [#14](https://github.com/singer-io/tap-mongodb/pull/14)
 
