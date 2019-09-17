@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import copy
 import time
-from bson import objectid
 import pymongo
 import singer
 from singer import metadata, utils
@@ -11,10 +10,10 @@ LOGGER = singer.get_logger()
 
 def get_max_id_value(collection):
     row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
-    return str(row['_id'])
+    id_value = row['_id']
+    return id_value
 
-
-# pylint: disable=too-many-locals,invalid-name
+# pylint: disable=too-many-locals,invalid-name,too-many-statements
 def sync_collection(client, stream, state, projection):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting full table sync for %s', tap_stream_id)
@@ -51,15 +50,18 @@ def sync_collection(client, stream, state, projection):
         version=stream_version
     )
 
-
     # For the initial replication, emit an ACTIVATE_VERSION message
     # at the beginning so the records show up right away.
     if first_run:
         singer.write_message(activate_version_message)
 
-    max_id_value = singer.get_bookmark(state,
-                                       stream['tap_stream_id'],
-                                       'max_id_value') or get_max_id_value(collection)
+    if singer.get_bookmark(state, stream['tap_stream_id'], 'max_id_value'):
+        # There is a bookmark
+        max_id_value = singer.get_bookmark(state, stream['tap_stream_id'], 'max_id_value')
+        max_id_type = singer.get_bookmark(state, stream['tap_stream_id'], 'max_id_type')
+        max_id_value = common.string_to_class(max_id_value, max_id_type)
+    else:
+        max_id_value = get_max_id_value(collection)
 
     last_id_fetched = singer.get_bookmark(state,
                                           stream['tap_stream_id'],
@@ -69,10 +71,17 @@ def sync_collection(client, stream, state, projection):
                                   stream['tap_stream_id'],
                                   'max_id_value',
                                   max_id_value)
+    state = singer.write_bookmark(state,
+                                  stream['tap_stream_id'],
+                                  'max_id_type',
+                                  max_id_value.__class__.__name__)
 
-    find_filter = {'$lte': objectid.ObjectId(max_id_value)}
+    find_filter = {'$lte': max_id_value}
     if last_id_fetched:
-        find_filter['$gte'] = objectid.ObjectId(last_id_fetched)
+        last_id_fetched_type = singer.get_bookmark(state,
+                                                   stream['tap_stream_id'],
+                                                   'last_id_fetched_type')
+        find_filter['$gte'] = common.string_to_class(last_id_fetched, last_id_fetched_type)
 
     query_message = 'Querying {} with:\n\tFind Parameters: {}'.format(
         stream['tap_stream_id'],
@@ -87,9 +96,7 @@ def sync_collection(client, stream, state, projection):
                          projection,
                          sort=[("_id", pymongo.ASCENDING)]) as cursor:
         rows_saved = 0
-
         time_extracted = utils.now()
-
         start_time = time.time()
 
         for row in cursor:
@@ -106,15 +113,22 @@ def sync_collection(client, stream, state, projection):
                                           stream['tap_stream_id'],
                                           'last_id_fetched',
                                           str(row['_id']))
+            state = singer.write_bookmark(state,
+                                          stream['tap_stream_id'],
+                                          'last_id_fetched_type',
+                                          row['_id'].__class__.__name__)
 
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                 singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
         common.COUNTS[tap_stream_id] += rows_saved
         common.TIMES[tap_stream_id] += time.time()-start_time
+
     # clear max pk value and last pk fetched upon successful sync
     singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
+    singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_type')
     singer.clear_bookmark(state, stream['tap_stream_id'], 'last_id_fetched')
+    singer.clear_bookmark(state, stream['tap_stream_id'], 'last_id_fetched_type')
 
     state = singer.write_bookmark(state,
                                   stream['tap_stream_id'],
