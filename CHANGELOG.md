@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.7
+  * Full Table syncs can handle empty collections [#18](https://github.com/singer-io/tap-mongodb/pull/18)
+
 ## 0.1.6
   * Fix a bug with supporting bookmarks of ObjectId [#17](https://github.com/singer-io/tap-mongodb/pull/17)
 
