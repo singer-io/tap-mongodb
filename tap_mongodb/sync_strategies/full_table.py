@@ -10,8 +10,12 @@ LOGGER = singer.get_logger()
 
 def get_max_id_value(collection):
     row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
-    id_value = row['_id']
-    return id_value
+    if row:
+        return row['_id']
+
+    LOGGER.info("No max id found for collection: collection is likely empty")
+    return None
+
 
 # pylint: disable=too-many-locals,invalid-name,too-many-statements
 def sync_collection(client, stream, state, projection):
@@ -66,15 +70,17 @@ def sync_collection(client, stream, state, projection):
                                           stream['tap_stream_id'],
                                           'last_id_fetched')
 
-    state = singer.write_bookmark(state,
-                                  stream['tap_stream_id'],
-                                  'max_id_value',
-                                  common.class_to_string(max_id_value,
-                                                         max_id_value.__class__.__name__))
-    state = singer.write_bookmark(state,
-                                  stream['tap_stream_id'],
-                                  'max_id_type',
-                                  max_id_value.__class__.__name__)
+    if max_id_value:
+        # Write the bookmark if max_id_value is defined
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'max_id_value',
+                                      common.class_to_string(max_id_value,
+                                                             max_id_value.__class__.__name__))
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'max_id_type',
+                                      max_id_value.__class__.__name__)
 
     find_filter = {'$lte': max_id_value}
     if last_id_fetched:
