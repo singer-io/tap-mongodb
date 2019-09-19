@@ -326,7 +326,9 @@ def main_impl():
                                  replicaset=config.get('replica_set', None),
                                  readPreference='secondaryPreferred')
 
-    LOGGER.info('Connected to MongoDB host: %s, version: %s', config['host'], client.server_info().get('version', 'unknown'))
+    LOGGER.info('Connected to MongoDB host: %s, version: %s',
+                config['host'],
+                client.server_info().get('version', 'unknown'))
 
     common.include_schemas_in_destination_stream_name = \
         (config.get('include_schemas_in_destination_stream_name') == 'true')
