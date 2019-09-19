@@ -3,7 +3,7 @@ import copy
 import json
 import sys
 import time
-from pymongo import MongoClient
+import pymongo
 from bson import timestamp
 
 import singer
@@ -317,13 +317,16 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
 
-    client = MongoClient(host=config['host'],
-                         port=int(config['port']),
-                         username=config.get('user', None),
-                         password=config.get('password', None),
-                         authSource=config['database'],
-                         ssl=(config.get('ssl') == 'true'),
-                         replicaset=config.get('replica_set', None))
+    client = pymongo.MongoClient(host=config['host'],
+                                 port=int(config['port']),
+                                 username=config.get('user', None),
+                                 password=config.get('password', None),
+                                 authSource=config['database'],
+                                 ssl=(config.get('ssl') == 'true'),
+                                 replicaset=config.get('replica_set', None),
+                                 readPreference='secondaryPreferred')
+
+    LOGGER.info('Connected to MongoDB host: %s, version: %s', config['host'], client.server_info().get('version', 'unknown'))
 
     common.include_schemas_in_destination_stream_name = \
         (config.get('include_schemas_in_destination_stream_name') == 'true')
