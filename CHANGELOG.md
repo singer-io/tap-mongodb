@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.8
+  * Prefer secondary when connecting to Mongo [#19](https://github.com/singer-io/tap-mongodb/pull/19)
+
 ## 0.1.7
   * Full Table syncs can handle empty collections [#18](https://github.com/singer-io/tap-mongodb/pull/18)
 
