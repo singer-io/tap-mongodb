@@ -228,6 +228,25 @@ def write_schema_message(stream):
         schema=stream['schema'],
         key_properties=['_id']))
 
+def load_stream_projection(stream):
+    md_map = metadata.to_map(stream['metadata'])
+    stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
+    if stream_projection == '' or stream_projection == '""' or not stream_projection:
+        return None
+
+    try:
+        stream_projection = json.loads(stream_projection)
+    except:
+        err_msg = "The projection: {} for stream {} is not valid json"
+        raise common.InvalidProjectionException(err_msg.format(stream_projection,
+                                                               stream['tap_stream_id']))
+
+    if stream_projection and stream_projection.get('_id') == 0:
+        raise common.InvalidProjectionException(
+            "Projection blacklists key property id for collection {}" \
+            .format(stream['tap_stream_id']))
+
+    return stream_projection
 
 def sync_stream(client, stream, state):
     tap_stream_id = stream['tap_stream_id']
@@ -239,24 +258,8 @@ def sync_stream(client, stream, state):
 
     replication_method = metadata.get(md_map, (), 'replication-method')
     database_name = metadata.get(md_map, (), 'database-name')
-    stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
 
-    if stream_projection:
-        try:
-            stream_projection = json.loads(stream_projection)
-            if stream_projection == '':
-                stream_projection = None
-        except:
-            err_msg = "The projection: {} for stream {} is not valid json"
-            raise common.InvalidProjectionException(err_msg.format(stream_projection,
-                                                                   tap_stream_id))
-    else:
-        LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.',
-                       stream['tap_stream_id'])
-
-    if stream_projection and stream_projection.get('_id') == 0:
-        raise common.InvalidProjectionException(
-            "Projection blacklists key property id for collection {}".format(tap_stream_id))
+    stream_projection = load_stream_projection(stream)
 
     # Emit a state message to indicate that we've started this stream
     state = singer.set_currently_syncing(state, stream['tap_stream_id'])
@@ -276,15 +279,18 @@ def sync_stream(client, stream, state):
                 state.get('bookmarks', {}).pop(tap_stream_id)
 
             # make sure initial full table sync has been completed
-            if not state.get('bookmarks', {}).get(tap_stream_id, {}) \
-                                             .get('initial_full_table_complete'):
+            initial_full_table_complete = state.get('bookmarks', {}) \
+                                               .get(tap_stream_id, {}) \
+                                               .get('initial_full_table_complete')
+            if not initial_full_table_complete:
                 msg = 'Must complete full table sync before starting oplog replication for %s'
                 LOGGER.info(msg, tap_stream_id)
 
-                # mark current ts in oplog so tap has a starting point
+                # only mark current ts in oplog on first sync so tap has a starting point
                 # after the full table sync
-                collection_oplog_ts = oplog.get_latest_ts(client)
-                oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
+                if initial_full_table_complete is None:
+                    collection_oplog_ts = oplog.get_latest_ts(client)
+                    oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
                 full_table.sync_collection(client, stream, state, stream_projection)
 
