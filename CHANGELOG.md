@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.9
+  * Make tap robust against projection that is empty string
+  * Actually respect `INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME` prop
+  * [#20](https://github.com/singer-io/tap-mongodb/pull/20)
+
 ## 0.1.8
   * Prefer secondary when connecting to Mongo [#19](https://github.com/singer-io/tap-mongodb/pull/19)
 
