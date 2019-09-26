@@ -118,9 +118,9 @@ def sync_collection(client, stream, state, stream_projection):
     start_time = time.time()
 
     oplog_query = {
-        'ts': {'$gte': oplog_ts},
-        'op': {'$in': ['i', 'u', 'd']},
-        'ns': '{}.{}'.format(database_name, collection_name)
+        'ts': {'$gte': oplog_ts}
+        #'op': {'$in': ['i', 'u', 'd']},
+        #'ns': '{}.{}'.format(database_name, collection_name)
     }
 
     projection = transform_projection(stream_projection)
@@ -136,8 +136,16 @@ def sync_collection(client, stream, state, stream_projection):
 
     update_buffer = set()
 
-    with client.local.oplog.rs.find(oplog_query, projection) as cursor:
+    # consider adding oplog_replay, but this would require removing the projection
+    # default behavior is a non_tailable cursor but we might want a tailable one
+    # regardless of whether its long lived or not.
+    with client.local.oplog.rs.find(
+            oplog_query,
+            projection,
+            sort=[('$natural', pymongo.ASCENDING)]) as cursor:
         for row in cursor:
+            if row.get('ns') != '{}.{}'.format(database_name, collection_name):
+                continue
             row_op = row['op']
             if row_op == 'i':
 
@@ -168,9 +176,6 @@ def sync_collection(client, stream, state, stream_projection):
                 singer.write_message(record_message)
 
                 rows_saved += 1
-            else:
-                LOGGER.info("Skipping op for table %s as it is not an \
-                INSERT, UPDATE, or DELETE", row['ns'])
 
             state = update_bookmarks(state,
                                      tap_stream_id,
