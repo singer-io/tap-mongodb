@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.11
+  * Only bookmark latest ts on first sync for oplog [#22](https://github.com/singer-io/tap-mongodb/pull/22)
+
 ## 0.1.10
   * Fix for additional empty string projections [#21](https://github.com/singer-io/tap-mongodb/pull/21)
 
