@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.10
+  * Fix for additional empty string projections [#21](https://github.com/singer-io/tap-mongodb/pull/21)
+
 ## 0.1.9
   * Make tap robust against projection that is empty string
   * Actually respect `INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME` prop
