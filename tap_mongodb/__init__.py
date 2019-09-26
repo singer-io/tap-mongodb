@@ -244,6 +244,8 @@ def sync_stream(client, stream, state):
     if stream_projection:
         try:
             stream_projection = json.loads(stream_projection)
+            if stream_projection == '':
+                stream_projection = None
         except:
             err_msg = "The projection: {} for stream {} is not valid json"
             raise common.InvalidProjectionException(err_msg.format(stream_projection,
