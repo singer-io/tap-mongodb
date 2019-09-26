@@ -141,8 +141,9 @@ def sync_collection(client, stream, state, stream_projection):
     # regardless of whether its long lived or not.
     with client.local.oplog.rs.find(
             oplog_query,
-            projection,
-            sort=[('$natural', pymongo.ASCENDING)]) as cursor:
+            sort=[('$natural', pymongo.ASCENDING)],
+            oplog_replay=True
+    ) as cursor:
         for row in cursor:
             if row.get('ns') != '{}.{}'.format(database_name, collection_name):
                 continue
