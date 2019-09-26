@@ -244,6 +244,8 @@ def sync_stream(client, stream, state):
     if stream_projection:
         try:
             stream_projection = json.loads(stream_projection)
+            if stream_projection == '':
+                stream_projection = None
         except:
             err_msg = "The projection: {} for stream {} is not valid json"
             raise common.InvalidProjectionException(err_msg.format(stream_projection,
@@ -330,7 +332,7 @@ def main_impl():
                 config['host'],
                 client.server_info().get('version', 'unknown'))
 
-    common.include_schemas_in_destination_stream_name = \
+    common.INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME = \
         (config.get('include_schemas_in_destination_stream_name') == 'true')
 
     if args.discover:
@@ -338,9 +340,6 @@ def main_impl():
     elif args.catalog:
         state = args.state or {}
         do_sync(client, args.catalog.to_dict(), state)
-    else:
-        LOGGER.info("Only discovery mode supported right now")
-
 
 def main():
     try:
