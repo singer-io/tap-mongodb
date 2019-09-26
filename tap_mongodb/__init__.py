@@ -85,7 +85,7 @@ def get_roles(client, config):
             continue
 
         # roles with find privileges
-        elif role_name in ROLES_WITH_FIND_PRIVILEGES:
+        if role_name in ROLES_WITH_FIND_PRIVILEGES:
             if role.get('db'):
                 roles.append(role)
 
