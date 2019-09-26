@@ -279,16 +279,13 @@ def sync_stream(client, stream, state):
                 state.get('bookmarks', {}).pop(tap_stream_id)
 
             # make sure initial full table sync has been completed
-            initial_full_table_complete = state.get('bookmarks', {}) \
-                                               .get(tap_stream_id, {}) \
-                                               .get('initial_full_table_complete')
-            if not initial_full_table_complete:
+            if not singer.get_bookmark(state, tap_stream_id, 'initial_full_table_complete'):
                 msg = 'Must complete full table sync before starting oplog replication for %s'
                 LOGGER.info(msg, tap_stream_id)
 
-                # only mark current ts in oplog on first sync so tap has a starting point
-                # after the full table sync
-                if initial_full_table_complete is None:
+                # only mark current ts in oplog on first sync so tap has a
+                # starting point after the full table sync
+                if singer.get_bookmark(state, tap_stream_id, 'version') is None:
                     collection_oplog_ts = oplog.get_latest_ts(client)
                     oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
