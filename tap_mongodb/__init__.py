@@ -228,6 +228,24 @@ def write_schema_message(stream):
         schema=stream['schema'],
         key_properties=['_id']))
 
+def load_stream_projection(stream):
+    md_map = metadata.to_map(stream['metadata'])
+    stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
+    if stream_projection == '' or not stream_projection:
+        return None
+
+    try:
+        stream_projection = json.loads(stream_projection)
+    except:
+        err_msg = "The projection: {} for stream {} is not valid json"
+        raise common.InvalidProjectionException(err_msg.format(stream_projection,
+                                                               stream['tap_stream_id']))
+
+    if stream_projection and stream_projection.get('_id') == 0:
+        raise common.InvalidProjectionException(
+            "Projection blacklists key property id for collection {}".format(stream['tap_stream_id']))
+
+    return stream_projection
 
 def sync_stream(client, stream, state):
     tap_stream_id = stream['tap_stream_id']
@@ -239,24 +257,8 @@ def sync_stream(client, stream, state):
 
     replication_method = metadata.get(md_map, (), 'replication-method')
     database_name = metadata.get(md_map, (), 'database-name')
-    stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
 
-    if stream_projection:
-        try:
-            stream_projection = json.loads(stream_projection)
-            if stream_projection == '':
-                stream_projection = None
-        except:
-            err_msg = "The projection: {} for stream {} is not valid json"
-            raise common.InvalidProjectionException(err_msg.format(stream_projection,
-                                                                   tap_stream_id))
-    else:
-        LOGGER.warning('There is no projection found for stream %s, all fields will be retrieved.',
-                       stream['tap_stream_id'])
-
-    if stream_projection and stream_projection.get('_id') == 0:
-        raise common.InvalidProjectionException(
-            "Projection blacklists key property id for collection {}".format(tap_stream_id))
+    stream_projection = load_stream_projection(stream)
 
     # Emit a state message to indicate that we've started this stream
     state = singer.set_currently_syncing(state, stream['tap_stream_id'])
