@@ -146,7 +146,11 @@ def sync_collection(client, stream, state, stream_projection):
     ) as cursor:
         for row in cursor:
             if row.get('ns') != '{}.{}'.format(database_name, collection_name):
+                state = update_bookmarks(state,
+                                         tap_stream_id,
+                                         row['ts'])
                 continue
+
             row_op = row['op']
             if row_op == 'i':
 
