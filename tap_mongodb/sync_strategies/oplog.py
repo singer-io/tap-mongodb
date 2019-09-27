@@ -123,7 +123,7 @@ def sync_collection(client, stream, state, stream_projection):
 
     projection = transform_projection(stream_projection)
 
-    oplog_replay = True if stream_projection is None else False
+    oplog_replay = stream_projection is None
 
     LOGGER.info('Querying %s with:\n\tFind Parameters: %s\n\tProjection: %s\n\toplog_replay: %s',
                 tap_stream_id, oplog_query, projection, oplog_replay)
@@ -145,7 +145,8 @@ def sync_collection(client, stream, state, stream_projection):
                 raise common.MongoAssertionException("Mongo is not honoring the query param")
             if row.get('ts') and row.get('ts') < timestamp.Timestamp(stream_state['oplog_ts_time'],
                                                                      stream_state['oplog_ts_inc']):
-                raise common.MongoAssertionException("Mongo is not honoring the sort ascending param")
+                raise common.MongoAssertionException(
+                    "Mongo is not honoring the sort ascending param")
 
             if row.get('ns') != '{}.{}'.format(database_name, collection_name):
                 if row.get('ts'):
