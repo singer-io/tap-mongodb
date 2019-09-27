@@ -119,20 +119,14 @@ def sync_collection(client, stream, state, stream_projection):
 
     oplog_query = {
         'ts': {'$gte': oplog_ts}
-        #'op': {'$in': ['i', 'u', 'd']},
-        #'ns': '{}.{}'.format(database_name, collection_name)
     }
 
     projection = transform_projection(stream_projection)
 
-    # _id is the key-property so don't let it get turned off
-    if stream_projection and stream_projection.get('_id') == 0:
-        stream_projection.pop('_id')
-    if stream_projection and not stream_projection:
-        stream_projection = None
+    oplog_replay = True if stream_projection is None else False
 
-    LOGGER.info('Querying %s with:\n\tFind Parameters: %s\n\tProjection: %s',
-                tap_stream_id, oplog_query, projection)
+    LOGGER.info('Querying %s with:\n\tFind Parameters: %s\n\tProjection: %s\n\toplog_replay: %s',
+                tap_stream_id, oplog_query, projection, oplog_replay)
 
     update_buffer = set()
 
@@ -141,14 +135,23 @@ def sync_collection(client, stream, state, stream_projection):
     # regardless of whether its long lived or not.
     with client.local.oplog.rs.find(
             oplog_query,
+            projection,
             sort=[('$natural', pymongo.ASCENDING)],
-            oplog_replay=True
+            oplog_replay=oplog_replay
     ) as cursor:
         for row in cursor:
+            # assertions that mongo is respecing the ts query and sort order
+            if row.get('ts') and row.get('ts') < oplog_ts:
+                raise common.MongoAssertionException("Mongo is not honoring the query param")
+            if row.get('ts') and row.get('ts') < timestamp.Timestamp(stream_state['oplog_ts_time'],
+                                                                     stream_state['oplog_ts_inc']):
+                raise common.MongoAssertionException("Mongo is not honoring the sort ascending param")
+
             if row.get('ns') != '{}.{}'.format(database_name, collection_name):
-                state = update_bookmarks(state,
-                                         tap_stream_id,
-                                         row['ts'])
+                if row.get('ts'):
+                    state = update_bookmarks(state,
+                                             tap_stream_id,
+                                             row['ts'])
                 continue
 
             row_op = row['op']
