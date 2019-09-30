@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.0
+  * Improve Oplog query performance by using only a timestamp and the `oplog_replay` arg. [#23](https://github.com/singer-io/tap-mongodb/pull/23)
+
 ## 0.1.11
   * Only bookmark latest ts on first sync for oplog [#22](https://github.com/singer-io/tap-mongodb/pull/22)
 
