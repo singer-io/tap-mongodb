@@ -22,6 +22,9 @@ class InvalidProjectionException(Exception):
 class UnsupportedReplicationKeyTypeException(Exception):
     """Raised if key type is unsupported"""
 
+class MongoAssertionException(Exception):
+    """Raised if Mongo exhibits incorrect behavior"""
+
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
     if INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME:
