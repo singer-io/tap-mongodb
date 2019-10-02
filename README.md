@@ -22,7 +22,7 @@ Create json file called `config.json`, with the following contents:
   "user": "<username>",
   "host": "<host ip address>",
   "port": "<port>",
-  "database": "<database name>",
+  "database": "<database name>"
 }
 ```
 The folowing parameters are optional for your config file:
