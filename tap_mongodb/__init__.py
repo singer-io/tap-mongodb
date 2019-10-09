@@ -266,10 +266,12 @@ def clear_state_on_replication_change(stream, state):
         current_replication_key = metadata.get(md_map, (), 'replication-key')
         if last_replication_key is not None and (current_replication_key != last_replication_key):
             log_msg = 'Replication Key changed from %s to %s, will re-replicate entire collection %s'
-            LOGGER.info(log_msg, last_replication_method, current_replication_method, tap_stream_id)
+            LOGGER.info(log_msg, last_replication_key, current_replication_key, tap_stream_id)
             state = singer.reset_stream(state, tap_stream_id)
+        state = singer.write_bookmark(state, tap_stream_id, 'replication_key_name', current_replication_key)
 
     state = singer.write_bookmark(state, tap_stream_id, 'last_replication_method', current_replication_method)
+
     return state
 
 def sync_stream(client, stream, state):
