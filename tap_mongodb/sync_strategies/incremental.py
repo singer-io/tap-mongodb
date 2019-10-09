@@ -60,31 +60,9 @@ def sync_collection(client, stream, state, projection):
 
     # get replication key, and bookmarked value/type
     stream_state = state.get('bookmarks', {}).get(tap_stream_id, {})
-    replication_key_name_bookmark = stream_state.get('replication_key_name')
-    replication_key_name_md = stream_metadata.get('replication-key')
 
-    replication_key_value_bookmark = None
-    if replication_key_name_bookmark == replication_key_name_md:
-        replication_key_value_bookmark = stream_state.get('replication_key_value')
-    else:
-        if replication_key_name_bookmark is not None:
-            # pylint: disable=line-too-long
-            log_msg = "Replication Key changed from %s to %s, will re-replicate entire collection %s"
-            LOGGER.warning(log_msg,
-                           replication_key_name_bookmark,
-                           replication_key_name_md,
-                           tap_stream_id)
-        replication_key_name_bookmark = replication_key_name_md
-        state = singer.write_bookmark(state,
-                                      tap_stream_id,
-                                      'replication_key_name',
-                                      replication_key_name_bookmark)
-        state = singer.clear_bookmark(state,
-                                      tap_stream_id,
-                                      'replication_key_value')
-        state = singer.clear_bookmark(state,
-                                      tap_stream_id,
-                                      'replication_key_type')
+    replication_key_name = stream_metadata.get('replication-key')
+    replication_key_value_bookmark = stream_state.get('replication_key_value')
 
     # write state message
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
@@ -92,12 +70,10 @@ def sync_collection(client, stream, state, projection):
     # create query
     find_filter = {}
     if replication_key_value_bookmark:
-        replication_key_type_bookmark = stream_state.get('replication_key_type')
-        find_filter[replication_key_name_bookmark] = {}
-        find_filter[replication_key_name_bookmark]['$gte'] = \
+        find_filter[replication_key_name] = {}
+        find_filter[replication_key_name]['$gte'] = \
             common.string_to_class(replication_key_value_bookmark,
-                                   replication_key_type_bookmark)
-
+                                   stream_state.get('replication_key_type'))
 
     # log query
     query_message = 'Querying {} with:\n\tFind Parameters: {}'.format(tap_stream_id, find_filter)
@@ -109,7 +85,7 @@ def sync_collection(client, stream, state, projection):
     # query collection
     with collection.find(find_filter,
                          projection,
-                         sort=[(replication_key_name_bookmark, pymongo.ASCENDING)]) as cursor:
+                         sort=[(replication_key_name, pymongo.ASCENDING)]) as cursor:
         rows_saved = 0
         time_extracted = utils.now()
         start_time = time.time()
@@ -122,7 +98,7 @@ def sync_collection(client, stream, state, projection):
             singer.write_message(record_message)
             rows_saved += 1
 
-            update_bookmark(row, state, tap_stream_id, replication_key_name_bookmark)
+            update_bookmark(row, state, tap_stream_id, replication_key_name)
 
             if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
                 singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))

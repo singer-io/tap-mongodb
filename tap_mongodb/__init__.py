@@ -248,6 +248,30 @@ def load_stream_projection(stream):
 
     return stream_projection
 
+def clear_state_on_replication_change(stream, state):
+    md_map = metadata.to_map(stream['metadata'])
+    tap_stream_id = stream['tap_stream_id']
+
+    # replication method changed
+    current_replication_method = metadata.get(md_map, (), 'replication-method')
+    last_replication_method = singer.get_bookmark(state, tap_stream_id, 'last_replication_method')
+    if last_replication_method is not None and (current_replication_method != last_replication_method):
+        log_msg = 'Replication method changed from %s to %s, will re-replication entire collection %s'
+        LOGGER.info(log_msg, last_replication_method, current_replication_method, tap_stream_id)
+        state = singer.reset_stream(state, tap_stream_id)
+
+    # replication key changed
+    if current_replication_method == 'INCREMENTAL':
+        last_replication_key = singer.get_bookmark(state, tap_stream_id, 'replication_key_name')
+        current_replication_key = metadata.get(md_map, (), 'replication-key')
+        if last_replication_key is not None and (current_replication_key != last_replication_key):
+            log_msg = 'Replication Key changed from %s to %s, will re-replicate entire collection %s'
+            LOGGER.info(log_msg, last_replication_method, current_replication_method, tap_stream_id)
+            state = singer.reset_stream(state, tap_stream_id)
+
+    state = singer.write_bookmark(state, tap_stream_id, 'last_replication_method', current_replication_method)
+    return state
+
 def sync_stream(client, stream, state):
     tap_stream_id = stream['tap_stream_id']
 
@@ -255,13 +279,13 @@ def sync_stream(client, stream, state):
     common.TIMES[tap_stream_id] = 0
 
     md_map = metadata.to_map(stream['metadata'])
-
     replication_method = metadata.get(md_map, (), 'replication-method')
     database_name = metadata.get(md_map, (), 'database-name')
 
     stream_projection = load_stream_projection(stream)
 
     # Emit a state message to indicate that we've started this stream
+    state = clear_state_on_replication_change(stream, state)
     state = singer.set_currently_syncing(state, stream['tap_stream_id'])
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
