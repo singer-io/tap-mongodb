@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.1
+  * Clear stream state if replication method changes [#24](https://github.com/singer-io/tap-mongodb/pull/24)
+
 ## 0.2.0
   * Improve Oplog query performance by using only a timestamp and the `oplog_replay` arg. [#23](https://github.com/singer-io/tap-mongodb/pull/23)
 
