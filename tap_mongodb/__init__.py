@@ -256,7 +256,7 @@ def clear_state_on_replication_change(stream, state):
     current_replication_method = metadata.get(md_map, (), 'replication-method')
     last_replication_method = singer.get_bookmark(state, tap_stream_id, 'last_replication_method')
     if last_replication_method is not None and (current_replication_method != last_replication_method):
-        log_msg = 'Replication method changed from %s to %s, will re-replication entire collection %s'
+        log_msg = 'Replication method changed from %s to %s, will re-replicate entire collection %s'
         LOGGER.info(log_msg, last_replication_method, current_replication_method, tap_stream_id)
         state = singer.reset_stream(state, tap_stream_id)
 
