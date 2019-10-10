@@ -24,7 +24,7 @@ def oplog_has_aged_out(client, state, tap_stream_id):
     earliest_ts = earliest_ts_row.get('ts')
 
     stream_state = state.get('bookmarks', {}).get(tap_stream_id)
-    if not stream_state:
+    if not stream_state or not stream_state.get('oplog_ts_time'):
         return False
 
     bookmarked_ts = timestamp.Timestamp(stream_state['oplog_ts_time'],
