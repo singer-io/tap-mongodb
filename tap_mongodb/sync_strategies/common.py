@@ -25,6 +25,9 @@ class UnsupportedReplicationKeyTypeException(Exception):
 class MongoAssertionException(Exception):
     """Raised if Mongo exhibits incorrect behavior"""
 
+class MongoInvalidDateTimeException(Exception):
+    """Raised if we find an invalid date-time that we can't handle"""
+
 def calculate_destination_stream_name(stream):
     s_md = metadata.to_map(stream['metadata'])
     if INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME:
@@ -83,21 +86,38 @@ def string_to_class(str_value, type_value):
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(type_value))
 
+def safe_transform_datetime(value, path):
+    timezone = tzlocal.get_localzone()
+    try:
+        local_datetime = timezone.localize(value)
+        utc_datetime = local_datetime.astimezone(pytz.UTC)
+    except Exception as ex:
+        if str(ex) == "year is out of range" and value.year == 0:
+            # NB: Since datetimes are persisted as strings, it doesn't
+            # make sense to blow up on invalid Python datetimes (e.g.,
+            # year=0). In this case we're formatting it as a string and
+            # passing it along down the pipeline.
+            return "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:06d}Z".format(value.year,
+                                                                              value.month,
+                                                                              value.day,
+                                                                              value.hour,
+                                                                              value.minute,
+                                                                              value.second,
+                                                                              value.microsecond)
+        raise MongoInvalidDateTimeException("Found invalid datetime at [{}]: {}".format(".".join(path), value))
+    return utils.strftime(utc_datetime)
 
 # pylint: disable=too-many-return-statements
-def transform_value(value):
+def transform_value(value, path):
     if isinstance(value, list):
         # pylint: disable=unnecessary-lambda
-        return list(map(lambda v: transform_value(v), value))
+        return list(map(lambda v: transform_value(v[1], path + [v[0]]), enumerate(value)))
     if isinstance(value, dict):
-        return {k:transform_value(v) for k, v in value.items()}
+        return {k:transform_value(v, path + [k]) for k, v in value.items()}
     if isinstance(value, objectid.ObjectId):
         return str(value)
     if isinstance(value, bson_datetime.datetime):
-        timezone = tzlocal.get_localzone()
-        local_datetime = timezone.localize(value)
-        utc_datetime = local_datetime.astimezone(pytz.UTC)
-        return utils.strftime(utc_datetime)
+        return safe_transform_datetime(value, path)
     if isinstance(value, timestamp.Timestamp):
         return utils.strftime(value.as_datetime())
     if isinstance(value, bson.int64.Int64):
@@ -130,8 +150,11 @@ def transform_value(value):
 
 def row_to_singer_record(stream, row, version, time_extracted):
     # pylint: disable=unidiomatic-typecheck
-    row_to_persist = {k:transform_value(v) for k, v in row.items()
-                      if type(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
+    try:
+        row_to_persist = {k:transform_value(v, [k]) for k, v in row.items()
+                          if type(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
+    except MongoInvalidDateTimeException as ex:
+        raise Exception("Error syncing collection {}, object ID {} - {}".format(stream["tap_stream_id"], row['_id'], ex))
 
     return singer.RecordMessage(
         stream=calculate_destination_stream_name(stream),
