@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.2.2
+  * Improve invalid datetime handling [#25](https://github.com/singer-io/tap-mongodb/pull/25)
+
 ## 0.2.1
   * Clear stream state if replication method changes [#24](https://github.com/singer-io/tap-mongodb/pull/24)
 
