@@ -3,6 +3,7 @@ import base64
 import datetime
 import time
 import bson
+import uuid
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
@@ -59,17 +60,17 @@ def class_to_string(bookmark_value, bookmark_type):
         return utils.strftime(utc_datetime)
     if bookmark_type == 'Timestamp':
         return '{}.{}'.format(bookmark_value.time, bookmark_value.inc)
-    if bookmark_type in ['int', 'ObjectId']:
-        return str(bookmark_value)
     if bookmark_type == 'bytes':
         return base64.b64encode(bookmark_value).decode('utf-8')
-    if bookmark_type == 'str':
+    if bookmark_type in ['int', 'ObjectId', 'str', 'UUID']:
         return str(bookmark_value)
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(bookmark_type))
 
 
 def string_to_class(str_value, type_value):
+    if type_value == 'UUID':
+        return uuid.UUID(str_value)
     if type_value == 'datetime':
         return singer.utils.strptime_with_tz(str_value)
     if type_value == 'int':
@@ -116,6 +117,8 @@ def transform_value(value, path):
         return list(map(lambda v: transform_value(v[1], path + [v[0]]), enumerate(value)))
     if isinstance(value, dict):
         return {k:transform_value(v, path + [k]) for k, v in value.items()}
+    if isinstance(value, uuid.UUID):
+        return str(value)
     if isinstance(value, objectid.ObjectId):
         return str(value)
     if isinstance(value, bson_datetime.datetime):
