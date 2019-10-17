@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.0
+  * Add support for UUID types in replication keys and records [#27](https://github.com/singer-io/tap-mongodb/pull/27)
+
 ## 0.2.2
   * Improve invalid datetime handling [#25](https://github.com/singer-io/tap-mongodb/pull/25)
 
