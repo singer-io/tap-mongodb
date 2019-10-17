@@ -2,8 +2,8 @@
 import base64
 import datetime
 import time
-import bson
 import uuid
+import bson
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
@@ -68,6 +68,7 @@ def class_to_string(bookmark_value, bookmark_type):
                                                  .format(bookmark_type))
 
 
+# pylint: disable=too-many-return-statements
 def string_to_class(str_value, type_value):
     if type_value == 'UUID':
         return uuid.UUID(str_value)
@@ -110,7 +111,7 @@ def safe_transform_datetime(value, path):
             value))
     return utils.strftime(utc_datetime)
 
-# pylint: disable=too-many-return-statements
+# pylint: disable=too-many-return-statements,too-many-branches
 def transform_value(value, path):
     if isinstance(value, list):
         # pylint: disable=unnecessary-lambda
