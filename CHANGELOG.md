@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.0
+  * Release out of Beta [#29](https://github.com/singer-io/tap-mongodb/pull/29)
+
 ## 0.3.0
   * Add support for UUID types in replication keys and records [#27](https://github.com/singer-io/tap-mongodb/pull/27)
 
