@@ -25,7 +25,7 @@ REQUIRED_CONFIG_KEYS = [
     'database'
 ]
 
-IGNORE_DBS = ['admin', 'system', 'local', 'config']
+IGNORE_DBS = ['system', 'local', 'config']
 ROLES_WITHOUT_FIND_PRIVILEGES = {
     'dbAdmin',
     'userAdmin',

@@ -14,8 +14,8 @@ def start_container(name):
     sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}"\
         -p {2}:{2} --name {3} \
         -d {4}:{5} --replSet rs0
-    """.format(os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
-               os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD'),
+    """.format(os.getenv('TAP_MONGODB_USER'),
+               os.getenv('TAP_MONGODB_PASSWORD'),
                27017,
                name,
                image_name,
@@ -35,8 +35,8 @@ def start_container(name):
     CONFIGURE_COMMAND = """
     docker run --rm mongo mongo --host {} \test -u {} -p {} --authenticationDatabase admin --eval {}
     """.format(ip_addr,
-               os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
-               os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD',),
+               os.getenv('TAP_MONGODB_USER'),
+               os.getenv('TAP_MONGODB_PASSWORD'),
                '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
     print(CONFIGURE_COMMAND)
     proc = subprocess.run(CONFIGURE_COMMAND, shell=True)
@@ -69,8 +69,8 @@ def connect_to_db(name):
 
     print("Attempting to connect to running container using a mongo container")
     connect_command_format = CONNECT_COMMAND.format(ip_addr,
-                                                    os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME'),
-                                                    os.getenv('STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD'))
+                                                    os.getenv('TAP_MONGODB_USER'),
+                                                    os.getenv('TAP_MONGODB_PASSWORD'))
     print(connect_command_format)
     # NB: Using call instead of run here because it is blocking
     #     This returns only an exit code.
@@ -83,8 +83,8 @@ DESCRIPTION = """
 Manage docker instance for tap-mssql testing.
 
 Uses environment variables:
-    STITCH_TAP_MONGODB_TEST_DATABASE_USERNAME
-    STITCH_TAP_MONGODB_TEST_DATABASE_PASSWORD
+    TAP_MONGODB_USER
+    TAP_MONGODB_PASSWORD
 """
 parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=RawTextHelpFormatter)
 parser.add_argument('action', choices=['start','stop', 'connect'], help='action to perform with the container')

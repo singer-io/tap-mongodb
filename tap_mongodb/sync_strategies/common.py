@@ -62,7 +62,7 @@ def class_to_string(bookmark_value, bookmark_type):
         return '{}.{}'.format(bookmark_value.time, bookmark_value.inc)
     if bookmark_type == 'bytes':
         return base64.b64encode(bookmark_value).decode('utf-8')
-    if bookmark_type in ['int', 'ObjectId', 'str', 'UUID']:
+    if bookmark_type in ['int', 'Int64', 'ObjectId', 'str', 'UUID']:
         return str(bookmark_value)
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(bookmark_type))
@@ -76,6 +76,8 @@ def string_to_class(str_value, type_value):
         return singer.utils.strptime_with_tz(str_value)
     if type_value == 'int':
         return int(str_value)
+    if type_value == 'Int64':
+        return bson.int64.Int64(str_value)
     if type_value == 'ObjectId':
         return objectid.ObjectId(str_value)
     if type_value == 'Timestamp':
