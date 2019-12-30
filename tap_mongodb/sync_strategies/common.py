@@ -74,8 +74,10 @@ def string_to_class(str_value, type_value):
         return uuid.UUID(str_value)
     if type_value == 'datetime':
         return singer.utils.strptime_with_tz(str_value)
-    if type_value in ['int', 'Int64']:
+    if type_value == 'int':
         return int(str_value)
+    if type_value == 'Int64':
+        return bson.int64.Int64(str_value)
     if type_value == 'ObjectId':
         return objectid.ObjectId(str_value)
     if type_value == 'Timestamp':
