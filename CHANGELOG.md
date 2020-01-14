@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.2
+  * Add support for DBRefs [#32](https://github.com/singer-io/tap-mongodb/pull/32)
+
 ## 1.0.1
   * Discover collections in the `admin` database and add support for `Int64` as a replication key type [#30](https://github.com/singer-io/tap-mongodb/pull/30)
 
