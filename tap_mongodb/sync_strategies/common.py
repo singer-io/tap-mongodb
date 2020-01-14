@@ -152,6 +152,12 @@ def transform_value(value, path):
             'pattern': value.pattern,
             'flags': value.flags
         }
+    if isinstance(value, bson.dbref.DBRef):
+        return {
+            'id': str(value.id),
+            'collection': value.collection,
+            'database': value.database
+        }
 
     return value
 
