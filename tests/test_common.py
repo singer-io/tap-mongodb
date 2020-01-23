@@ -157,8 +157,6 @@ class TestRowToSchemaMessage(unittest.TestCase):
         }
         self.assertTrue(changed_date)
         self.assertTrue(changed_nested)
-        import ipdb; ipdb.set_trace()
-        1+1
         self.assertEqual(expected, schema)
 
     # def test_array_multiple_types(self):
