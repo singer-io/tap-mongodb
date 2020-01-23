@@ -161,6 +161,82 @@ def transform_value(value, path):
 
     return value
 
+# "anyOf": {}
+# "additionalProperties": true
+
+
+# {"type": "object", "properties": {"foo": "anyOf" ..., additionalProperties: true}}
+
+# {"type": "object", "properties": {}}
+
+def row_to_schema_message(schema, row):
+    changed = False
+    # walk the row (recursively?)
+    for field,value in row.items():
+        if isinstance(value, (bson_datetime.datetime, timestamp.Timestamp, datetime.datetime)):
+            if schema.get('properties',{}).get(field):
+                anyOf_schema = schema['properties'][field]['anyOf']
+                has_date = False
+                for field_schema_entry in anyOf_schema:
+                    if field_schema_entry.get('format') == 'date-time':
+                        has_date = True
+                        break
+                if not has_date:
+                    anyOf_schema.insert(0, {"type": "string", "format": "date-time"})
+                    changed = True
+            else:
+                schema['properties'][field] = {"anyOf": [{"type": "string",
+                                                          "format": "date-time"},
+                                                         {}]}
+                changed = True
+        elif isinstance(value, bson.decimal128.Decimal128):
+            if schema.get('properties',{}).get(field):
+                anyOf_schema = schema['properties'][field]['anyOf']
+                has_date = False
+                has_decimal = False
+                for field_schema_entry in anyOf_schema:
+                    if field_schema_entry.get('format') == 'date-time':
+                        has_date = True
+                    elif field_schema_entry.get('type') == 'number':
+                        has_decimal = True
+                if not has_decimal:
+                    if has_date:
+                        anyOf_schema.insert(1, {"type": "number", "multipleOf": 1e-34})
+                    else:
+                        anyOf_schema.insert(0, {"type": "number", "multipleOf": 1e-34})
+                    changed = True
+            else:
+                schema['properties'][field] = {"anyOf": [{"type": "number",
+                                                          "multipleOf": 1e-34},
+                                                         {}]}
+                changed = True
+        elif isinstance(value, dict):
+            object_schema = {"type": "object", "properties": {}}
+            if not schema.get('properties',{}).get(field):
+                schema['properties'][field] =  {"anyOf": [object_schema, {}]}
+            else:
+                anyof_schema = schema['properties'][field]['anyOf']
+                anyof_schema.insert(-1, object_schema)
+            if row_to_schema_message(object_schema, value):
+                changed = True
+        elif isinstance(value, list):
+            list_schema = {"type": "array", "items": {}}
+            if not schema.get('properties',{}).get(field):
+                schema['properties'][field] =  {"anyOf": [list_schema, {}]}
+            else:
+                anyof_schema = schema['properties'][field]['anyOf']
+                anyof_schema.insert(-1, object_schema)
+            if row_to_schema_message(list_schema, value):
+                changed = True
+
+    return changed
+
+    # in  the case where you find a  date
+    # check if its in the schema; when it is you do nothing, when its not you add it and flip the bit to true
+
+
+# returns (schemaMessage, true / false)
+
 
 def row_to_singer_record(stream, row, version, time_extracted):
     # pylint: disable=unidiomatic-typecheck

@@ -90,6 +90,9 @@ def sync_collection(client, stream, state, projection):
         time_extracted = utils.now()
         start_time = time.time()
         for row in cursor:
+            # schema, updated = common.row_to_schema_message(schema, row)
+            # if updated
+            #   emit schema
             record_message = common.row_to_singer_record(stream,
                                                          row,
                                                          stream_version,
