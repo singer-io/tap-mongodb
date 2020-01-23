@@ -89,15 +89,22 @@ def sync_collection(client, stream, state, projection):
         rows_saved = 0
         time_extracted = utils.now()
         start_time = time.time()
+        #schema =  {"type": "object", "properties": {}}
         for row in cursor:
             # schema, updated = common.row_to_schema_message(schema, row)
             # if updated
             #   emit schema
+
+
             record_message = common.row_to_singer_record(stream,
                                                          row,
                                                          stream_version,
                                                          time_extracted)
 
+            # gen_schema = common.row_to_schema_message(schema, record_message.record, row)
+            # if DeepDiff(schema, gen_schema, ignore_order=True) != {}:
+            #   emit gen_schema
+            #   schema = gen_schema
             singer.write_message(record_message)
             rows_saved += 1
 

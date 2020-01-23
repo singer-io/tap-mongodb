@@ -180,7 +180,7 @@ def add_to_any_of(schema, value):
         if not has_date:
             schema.insert(0, {"type": "string", "format": "date-time"})
             changed = True
-        
+
     elif isinstance(value, bson.decimal128.Decimal128):
         has_date = False
         has_decimal = False
@@ -202,53 +202,84 @@ def add_to_any_of(schema, value):
         schema.insert(-1, object_schema)
     elif isinstance(value, list):
         pass
-        
+
     return changed
 
 
-def row_to_schema_message(schema, row):
-    changed = False
-    # walk the row (recursively?)
+# def row_to_schema_message(schema, row):
+#     changed = False
+#     # walk the row (recursively?)
+#     for field,value in row.items():
+#         if isinstance(value, (bson_datetime.datetime, timestamp.Timestamp, datetime.datetime)):
+#             if schema.get('properties',{}).get(field):
+#                 anyOf_schema = schema['properties'][field]['anyOf']
+#                 changed = changed or add_to_any_of(anyOf_schema, value)
+#             else:
+#                 schema['properties'][field] = {"anyOf": [{"type": "string",
+#                                                           "format": "date-time"},
+#                                                          {}]}
+#                 changed = True
+
+#         elif isinstance(value, bson.decimal128.Decimal128):
+#             if schema.get('properties',{}).get(field):
+#                 anyOf_schema = schema['properties'][field]['anyOf']
+#                 changed = changed or add_to_any_of(anyOf_schema, value)
+#             else:
+#                 schema['properties'][field] = {"anyOf": [{"type": "number",
+#                                                           "multipleOf": 1e-34},
+#                                                          {}]}
+#                 changed = True
+
+#         elif isinstance(value, dict):
+#             if schema.get('properties',{}).get(field):
+#                 anyof_schema = schema['properties'][field]['anyOf']
+#             else:
+#                 schema['properties'][field] = {'anyOf': [{}]}
+#                 anyof_schema = schema['properties'][field]['anyOf']
+#             dict_schema_changed = add_to_any_of(anyof_schema, value)
+#             changed = changed or dict_schema_changed
+
+#         elif isinstance(value, list):
+#             list_schema = {"type": "array", "items": {"anyOf": [{}]}}
+#             if not schema.get('properties',{}).get(field):
+#                 schema['properties'][field] = {'anyOf': [{}]}
+#             schema['properties'][field]['anyOf'].insert(-1, list_schema)
+#             for list_entry in value:
+#                 list_entry_changed = add_to_any_of(list_schema['items']['anyOf'], list_entry)
+#                 changed = changed or list_entry_changed
+#     return changed
+
+
+# GenSon to build a base schema. Walk both structures and annotate the special types
+#from genson import SchemaBuilder
+
+def row_to_schema_message(schema, singer_row, raw_row):
+    from genson import SchemaBuilder
+    sb = SchemaBuilder()
+    sb.add_object(singer_row)
+    schema = sb.to_schema()
+    schema.pop("$schema")
+    schema.pop("required")
+
+    return _row_to_schema_message(schema, raw_row)
+
+def _row_to_schema_message(schema, row):
     for field,value in row.items():
         if isinstance(value, (bson_datetime.datetime, timestamp.Timestamp, datetime.datetime)):
-            if schema.get('properties',{}).get(field):
-                anyOf_schema = schema['properties'][field]['anyOf']
-                changed = changed or add_to_any_of(anyOf_schema, value)
-            else:
-                schema['properties'][field] = {"anyOf": [{"type": "string",
-                                                          "format": "date-time"},
-                                                         {}]}
-                changed = True
-                
+            schema['properties'][field]['format'] = 'date-time'
         elif isinstance(value, bson.decimal128.Decimal128):
-            if schema.get('properties',{}).get(field):
-                anyOf_schema = schema['properties'][field]['anyOf']
-                changed = changed or add_to_any_of(anyOf_schema, value)
-            else:
-                schema['properties'][field] = {"anyOf": [{"type": "number",
-                                                          "multipleOf": 1e-34},
-                                                         {}]}
-                changed = True
-                
+            schema['properties'][field]['multipleOf'] = 1e-34
         elif isinstance(value, dict):
-            if schema.get('properties',{}).get(field):
-                anyof_schema = schema['properties'][field]['anyOf']
-            else:
-                schema['properties'][field] = {'anyOf': [{}]}
-                anyof_schema = schema['properties'][field]['anyOf']
-            dict_schema_changed = add_to_any_of(anyof_schema, value)
-            changed = changed or dict_schema_changed
-
+            _row_to_schema_message(schema['properties'][field], value)
         elif isinstance(value, list):
-            list_schema = {"type": "array", "items": {"anyOf": [{}]}}
-            if not schema.get('properties',{}).get(field):
-                schema['properties'][field] = {'anyOf': [{}]}
-            schema['properties'][field]['anyOf'].insert(-1, list_schema)
-            for list_entry in value:
-                list_entry_changed = add_to_any_of(list_schema['items']['anyOf'], list_entry)
-                changed = changed or list_entry_changed
-    return changed
+            # not ready yet
+            for v in value:
+                # Fix this?
+                _row_to_schema_message(schema['properties'][field], v)
 
+    return schema
+    
+# if DeepDiff(old_schema, new_schema, ignore_order=True) == {}: they are the same
 
 # def row_to_schema_message(schema, row):
 #     changed = False
