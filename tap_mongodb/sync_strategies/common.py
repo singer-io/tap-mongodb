@@ -169,6 +169,43 @@ def transform_value(value, path):
 
 # {"type": "object", "properties": {}}
 
+def add_to_any_of(schema, value):
+    changed = False
+    if isinstance(value, (bson_datetime.datetime, timestamp.Timestamp, datetime.datetime)):
+        has_date = False
+        for field_schema_entry in schema:
+            if field_schema_entry.get('format') == 'date-time':
+                has_date = True
+                break
+        if not has_date:
+            schema.insert(0, {"type": "string", "format": "date-time"})
+            changed = True
+        
+    elif isinstance(value, bson.decimal128.Decimal128):
+        has_date = False
+        has_decimal = False
+        for field_schema_entry in schema:
+            if field_schema_entry.get('format') == 'date-time':
+                has_date = True
+            elif field_schema_entry.get('type') == 'number':
+                has_decimal = True
+            if not has_decimal:
+                if has_date:
+                    schema.insert(1, {"type": "number", "multipleOf": 1e-34})
+                else:
+                    schema.insert(0, {"type": "number", "multipleOf": 1e-34})
+                changed = True
+    elif isinstance(value, dict):
+        object_schema = {"type": "object", "properties": {}}
+        if row_to_schema_message(object_schema, value):
+            changed = True
+        schema.insert(-1, object_schema)
+    elif isinstance(value, list):
+        pass
+        
+    return changed
+
+
 def row_to_schema_message(schema, row):
     changed = False
     # walk the row (recursively?)

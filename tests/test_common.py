@@ -159,40 +159,41 @@ class TestRowToSchemaMessage(unittest.TestCase):
         self.assertTrue(changed_nested)
         self.assertEqual(expected, schema)
 
-    # def test_array_multiple_types(self):
-    #     row = {
-    #         "foo": [
-    #             bson.timestamp.Timestamp(1565897157, 1),
-    #             bson.Decimal128(decimal.Decimal('1.34'))
-    #         ]
-    #     }
-    #     schema = {"type": "object", "properties": {}}
-    #     changed = common.row_to_schema_message(schema, row)
+    def test_array_multiple_types(self):
+        row = {
+            "foo": [
+                bson.timestamp.Timestamp(1565897157, 1),
+                bson.Decimal128(decimal.Decimal('1.34'))
+            ]
+        }
+        schema = {"type": "object", "properties": {}}
+        changed = common.row_to_schema_message(schema, row)
 
-    #     expected = {
-    #         "type": "object",
-    #         "properties": {
-    #             "anyOf": [
-    #                 {
-    #                     "type": "array",
-    #                     "items": {
-    #                         "anyOf": [
-    #                             {
-    #                                 "type": "string",
-    #                                 "format": "date-time"
-    #                             },
-    #                             {
-    #                                 "type": "number",
-    #                                 "multipleOf": 1e-34
-    #                             },
-    #                             {}
-    #                         ]
-    #                     }
-    #                 },
-    #                 {}
-    #             ]
-    #         }
-    #     }
-
-    #     self.assertTrue(changed)
-    #     self.assertEqual(expected, schema)
+        expected = {
+            "type": "object",
+            "properties": {
+                "foo": {
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {
+                                "anyOf": [
+                                    {
+                                        "type": "string",
+                                        "format": "date-time"
+                                    },
+                                    {
+                                        "type": "number",
+                                        "multipleOf": 1e-34
+                                    },
+                                    {}
+                                ]
+                            }
+                        },
+                        {}
+                    ]
+                }
+            }
+        }
+        self.assertTrue(changed)
+        self.assertEqual(expected, schema)
