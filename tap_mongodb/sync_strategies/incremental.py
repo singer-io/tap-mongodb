@@ -83,17 +83,23 @@ def sync_collection(client, stream, state, projection):
 
 
     # query collection
+    schema =  {"type": "object", "properties": {}}
     with collection.find(find_filter,
                          projection,
                          sort=[(replication_key_name, pymongo.ASCENDING)]) as cursor:
         rows_saved = 0
         time_extracted = utils.now()
         start_time = time.time()
-        #schema =  {"type": "object", "properties": {}}
+
         for row in cursor:
-            # schema, updated = common.row_to_schema_message(schema, row)
-            # if updated
-            #   emit schema
+            schema_build_start_time = time.time()
+            if common.row_to_schema(schema, row):
+                singer.write_message(singer.SchemaMessage(
+                    stream=common.calculate_destination_stream_name(stream),
+                    schema=schema,
+                    key_properties=['_id']))
+                common.SCHEMA_COUNT[tap_stream_id] += 1
+            common.SCHEMA_TIMES[tap_stream_id] += time.time() - schema_build_start_time
 
 
             record_message = common.row_to_singer_record(stream,
