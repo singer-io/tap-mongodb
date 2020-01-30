@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.3
+  * Add support for floats as replication keys [#34](https://github.com/singer-io/tap-mongodb/pull/34)
+
 ## 1.0.2
   * Add support for DBRefs [#32](https://github.com/singer-io/tap-mongodb/pull/32)
 
