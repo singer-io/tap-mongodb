@@ -348,6 +348,8 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
 
+    no_verify_mode = config.get('ssh') == 'true' and config.get('ssl') == 'true'
+
     client = pymongo.MongoClient(host=config['host'],
                                  port=int(config['port']),
                                  username=config.get('user', None),
@@ -355,7 +357,8 @@ def main_impl():
                                  authSource=config['database'],
                                  ssl=(config.get('ssl') == 'true'),
                                  replicaset=config.get('replica_set', None),
-                                 readPreference='secondaryPreferred')
+                                 readPreference='secondaryPreferred',
+                                 ssl_cert_reqs=ssl.CERT_NONE if no_verify_mode else ssl.CERT_REQUIRED)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
