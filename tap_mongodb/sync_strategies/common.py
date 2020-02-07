@@ -189,17 +189,44 @@ def add_to_any_of(schema, value):
     elif isinstance(value, bson.decimal128.Decimal128):
         has_date = False
         has_decimal = False
+
         for field_schema_entry in schema:
             if field_schema_entry.get('format') == 'date-time':
                 has_date = True
-            elif field_schema_entry.get('type') == 'number':
+            if field_schema_entry.get('type') == 'number' and not field_schema_entry.get('multipleOf'):
+                field_schema_entry['multipleOf'] = decimal.Decimal('1e-34')
+                return True
+            if field_schema_entry.get('type') == 'number' and field_schema_entry.get('multipleOf'):
                 has_decimal = True
+
         if not has_decimal:
             if has_date:
                 schema.insert(1, {"type": "number", "multipleOf": decimal.Decimal('1e-34')})
             else:
                 schema.insert(0, {"type": "number", "multipleOf": decimal.Decimal('1e-34')})
             changed = True
+
+    elif isinstance(value, float):
+        has_date = False
+        has_float = False
+
+        for field_schema_entry in schema:
+            if field_schema_entry.get('format') == 'date-time':
+                has_date = True
+            if field_schema_entry.get('type') == 'number' and field_schema_entry.get('multipleOf'):
+                field_schema_entry.pop('multipleOf')
+                return True
+            if field_schema_entry.get('type') == 'number' and not field_schema_entry.get('multipleOf'):
+                has_float= True
+
+        if not has_float:
+            if has_date:
+                schema.insert(1, {"type": "number"})
+            else:
+                schema.insert(0, {"type": "number"})
+
+            changed = True
+
     elif isinstance(value, dict):
         has_object = False
 
