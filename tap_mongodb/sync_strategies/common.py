@@ -3,8 +3,8 @@ import base64
 import datetime
 import time
 import uuid
-import bson
 import decimal
+import bson
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
@@ -218,7 +218,7 @@ def add_to_any_of(schema, value):
                 field_schema_entry.pop('multipleOf')
                 return True
             if field_schema_entry.get('type') == 'number' and not field_schema_entry.get('multipleOf'):
-                has_float= True
+                has_float = True
 
         if not has_float:
             if has_date:
@@ -273,7 +273,7 @@ def add_to_any_of(schema, value):
 def row_to_schema(schema, row):
     changed = False
 
-    for field,value in row.items():
+    for field, value in row.items():
         if isinstance(value, (bson_datetime.datetime,
                               timestamp.Timestamp,
                               datetime.datetime,
@@ -283,12 +283,12 @@ def row_to_schema(schema, row):
                               list)):
 
             # get pointer to field's anyOf list
-            if not schema.get('properties',{}).get(field):
+            if not schema.get('properties', {}).get(field):
                 schema['properties'][field] = {'anyOf': [{}]}
-            anyOf_schema = schema['properties'][field]['anyOf']
+            anyof_schema = schema['properties'][field]['anyOf']
 
             # add value's schema to anyOf list
-            changed = add_to_any_of(anyOf_schema, value) or changed
+            changed = add_to_any_of(anyof_schema, value) or changed
 
     return changed
 
@@ -431,15 +431,16 @@ def get_sync_summary(catalog):
         schema_duration = SCHEMA_TIMES[stream_id]
         if stream_time == 0:
             stream_time = 0.000001
-        row = [db_name,
-               collection_name,
-               replication_method,
-               '{} records'.format(stream_count),
-               '{:.1f} records/second'.format(stream_count/stream_time),
-               '{:.5f} seconds'.format(stream_time),
-               '{} schemas'.format(schemas_written),
-               '{:.5f} seconds'.format(schema_duration),
-               '{:.2f}%'.format(100*schema_duration/stream_time)
+        row = [
+            db_name,
+            collection_name,
+            replication_method,
+            '{} records'.format(stream_count),
+            '{:.1f} records/second'.format(stream_count/stream_time),
+            '{:.5f} seconds'.format(stream_time),
+            '{} schemas'.format(schemas_written),
+            '{:.5f} seconds'.format(schema_duration),
+            '{:.2f}%'.format(100*schema_duration/stream_time)
         ]
         rows.append(row)
 

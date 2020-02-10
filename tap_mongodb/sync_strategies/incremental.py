@@ -83,7 +83,7 @@ def sync_collection(client, stream, state, projection):
 
 
     # query collection
-    schema =  {"type": "object", "properties": {}}
+    schema = {"type": "object", "properties": {}}
     with collection.find(find_filter,
                          projection,
                          sort=[(replication_key_name, pymongo.ASCENDING)]) as cursor:

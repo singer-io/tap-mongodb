@@ -105,7 +105,7 @@ def sync_collection(client, stream, state, projection):
         time_extracted = utils.now()
         start_time = time.time()
 
-        schema =  {"type": "object", "properties": {}}
+        schema = {"type": "object", "properties": {}}
         for row in cursor:
             rows_saved += 1
 

@@ -140,7 +140,7 @@ def sync_collection(client, stream, state, stream_projection):
                 tap_stream_id, oplog_query, projection, oplog_replay)
 
     update_buffer = set()
-    schema =  {"type": "object", "properties": {}}
+    schema = {"type": "object", "properties": {}}
     # consider adding oplog_replay, but this would require removing the projection
     # default behavior is a non_tailable cursor but we might want a tailable one
     # regardless of whether its long lived or not.
