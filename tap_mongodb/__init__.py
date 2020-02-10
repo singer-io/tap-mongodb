@@ -360,6 +360,7 @@ def main_impl():
                          "replicaset": config.get('replica_set', None),
                          "readPreference": 'secondaryPreferred'}
 
+    # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
     if no_verify_mode:
         connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
 
