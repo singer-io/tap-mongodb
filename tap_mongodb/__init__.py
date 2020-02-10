@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import copy
 import json
+import ssl
 import sys
 import time
 import pymongo
@@ -348,14 +349,22 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
 
-    client = pymongo.MongoClient(host=config['host'],
-                                 port=int(config['port']),
-                                 username=config.get('user', None),
-                                 password=config.get('password', None),
-                                 authSource=config['database'],
-                                 ssl=(config.get('ssl') == 'true'),
-                                 replicaset=config.get('replica_set', None),
-                                 readPreference='secondaryPreferred')
+    no_verify_mode = config.get('ssh') == 'true' and config.get('ssl') == 'true'
+
+    connection_params = {"host": config['host'],
+                         "port": int(config['port']),
+                         "username": config.get('user', None),
+                         "password": config.get('password', None),
+                         "authSource": config['database'],
+                         "ssl": (config.get('ssl') == 'true'),
+                         "replicaset": config.get('replica_set', None),
+                         "readPreference": 'secondaryPreferred'}
+
+    # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
+    if no_verify_mode:
+        connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+
+    client = pymongo.MongoClient(**connection_params)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
