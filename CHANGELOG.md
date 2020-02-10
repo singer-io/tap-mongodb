@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.0.4
+  * Add support for turning off ssl cert validation when using a ssh tunnel [#36](https://github.com/singer-io/tap-mongodb/pull/36)
+
 ## 1.0.3
   * Add support for floats as replication keys [#34](https://github.com/singer-io/tap-mongodb/pull/34)
 
