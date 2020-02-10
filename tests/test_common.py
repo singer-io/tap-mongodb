@@ -75,18 +75,134 @@ class TestRowToSchemaMessage(unittest.TestCase):
         schema = {"type": "object", "properties": {}}
         changed = common.row_to_schema(schema, row)
 
-        expected = {"type": "object",
-                    "properties": {
-                        "a_decimal": {
-                            "anyOf": [{"type": "number",
-                                       "multipleOf": decimal.Decimal('1e-34')},
-                                      {}]
-                        }
-                    }
+        expected = {
+            "type": "object",
+            "properties": {
+                "a_decimal": {
+                    "anyOf": [{"type": "number",
+                               "multipleOf": decimal.Decimal('1e-34')},
+                              {}]
+                }
+            }
         }
         self.assertTrue(changed)
         self.assertEqual(expected, schema)
 
+
+    def test_simple_float(self):
+        row = {"a_float": 1.34}
+        schema = {"type": "object", "properties": {}}
+        changed = common.row_to_schema(schema, row)
+
+        expected = {
+            "type": "object",
+            "properties": {
+                "a_float": {
+                    "anyOf": [{"type": "number"},
+                              {}]
+                }
+            }
+        }
+        self.assertTrue(changed)
+        self.assertEqual(expected, schema)
+
+
+    def test_decimal_then_float(self):
+        decimal_row = {"a_field": bson.Decimal128(decimal.Decimal('1.34'))}
+        float_row = {"a_field": 1.34}
+
+        schema = {"type": "object", "properties": {}}
+
+        changed_decimal = common.row_to_schema(schema, decimal_row)
+        changed_float = common.row_to_schema(schema, float_row)
+
+        expected = {
+            "type": "object",
+            "properties": {
+                "a_field": {
+                    "anyOf": [{"type": "number"},
+                              {}]
+                }
+            }
+        }
+
+        self.assertTrue(changed_decimal)
+        self.assertTrue(changed_float)
+
+        self.assertEqual(expected, schema)
+
+
+    def test_float_then_decimal(self):
+        float_row = {"a_field": 1.34}
+        decimal_row = {"a_field": bson.Decimal128(decimal.Decimal('1.34'))}
+
+        schema = {"type": "object", "properties": {}}
+
+        changed_decimal = common.row_to_schema(schema, float_row)
+        changed_float = common.row_to_schema(schema, decimal_row)
+
+        expected = {
+            "type": "object",
+            "properties": {
+                "a_field": {
+                    "anyOf": [{"type": "number",
+                               "multipleOf": decimal.Decimal('1e-34')},
+                              {}]
+                }
+            }
+        }
+
+        self.assertTrue(changed_float)
+        self.assertTrue(changed_decimal)
+        self.assertEqual(expected, schema)
+
+    def test_float_then_float(self):
+        float_row = {"a_field": 1.34}
+        float_row_2 = {"a_field": 1.34}
+
+        schema = {"type": "object", "properties": {}}
+
+        changed_float = common.row_to_schema(schema, float_row)
+        changed_float_2 = common.row_to_schema(schema, float_row_2)
+
+        expected = {
+            "type": "object",
+            "properties": {
+                "a_field": {
+                    "anyOf": [{"type": "number"},
+                              {}]
+                }
+            }
+        }
+
+        self.assertTrue(changed_float)
+        self.assertFalse(changed_float_2)
+        self.assertEqual(expected, schema)
+
+
+    def test_decimal_then_decimal(self):
+        decimal_row = {"a_field": bson.Decimal128(decimal.Decimal('1.34'))}
+        decimal_row_2 = {"a_field": bson.Decimal128(decimal.Decimal('1.34'))}
+
+        schema = {"type": "object", "properties": {}}
+
+        changed_decimal = common.row_to_schema(schema, decimal_row)
+        changed_decimal_2 = common.row_to_schema(schema, decimal_row_2)
+
+        expected = {
+            "type": "object",
+            "properties": {
+                "a_field": {
+                    "anyOf": [{"type": "number",
+                              "multipleOf": decimal.Decimal('1e-34')},
+                              {}]
+                }
+            }
+        }
+
+        self.assertTrue(changed_decimal)
+        self.assertFalse(changed_decimal_2)
+        self.assertEqual(expected, schema)
 
     def test_decimal_and_date(self):
         date_row = {"a_field": bson.timestamp.Timestamp(1565897157, 1)}
@@ -250,7 +366,7 @@ class TestRowToSchemaMessage(unittest.TestCase):
         schema = {"type": "object", "properties": {}}
         changed = common.row_to_schema(schema, row)
         changed_2 = common.row_to_schema(schema, row_2)
-        
+
         expected = {
             "type": "object",
             "properties": {

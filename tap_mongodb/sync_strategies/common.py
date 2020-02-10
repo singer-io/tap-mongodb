@@ -176,6 +176,7 @@ def transform_value(value, path):
 
 def add_to_any_of(schema, value):
     changed = False
+
     if isinstance(value, (bson_datetime.datetime, timestamp.Timestamp, datetime.datetime)):
         has_date = False
         for field_schema_entry in schema:
@@ -277,6 +278,7 @@ def row_to_schema(schema, row):
                               timestamp.Timestamp,
                               datetime.datetime,
                               bson.decimal128.Decimal128,
+                              float,
                               dict,
                               list)):
 
