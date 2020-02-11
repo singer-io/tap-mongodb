@@ -349,19 +349,21 @@ def main_impl():
     args = utils.parse_args(REQUIRED_CONFIG_KEYS)
     config = args.config
 
-    no_verify_mode = config.get('ssh') == 'true' and config.get('ssl') == 'true'
+    # Default SSL verify mode to true, give option to disable
+    verify_mode = config.get('verify_mode', 'true') == 'true'
+    use_ssl = config.get('ssl') == 'true'
 
     connection_params = {"host": config['host'],
                          "port": int(config['port']),
                          "username": config.get('user', None),
                          "password": config.get('password', None),
                          "authSource": config['database'],
-                         "ssl": (config.get('ssl') == 'true'),
+                         "ssl": use_ssl,
                          "replicaset": config.get('replica_set', None),
                          "readPreference": 'secondaryPreferred'}
 
     # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
-    if no_verify_mode:
+    if not verify_mode and use_ssl:
         connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
 
     client = pymongo.MongoClient(**connection_params)
