@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+  * Add optional `verify_mode` config value to replace the assumptions in version 1.0.4 [#38](https://github.com/singer-io/tap-mongodb/pull/38)
+
+## 1.0.4
+  * Add support for turning off ssl cert validation when using a ssh tunnel [#36](https://github.com/singer-io/tap-mongodb/pull/36)
+
+## 1.0.3
+  * Add support for floats as replication keys [#34](https://github.com/singer-io/tap-mongodb/pull/34)
+
 ## 1.0.2
   * Add support for DBRefs [#32](https://github.com/singer-io/tap-mongodb/pull/32)
 
