@@ -3,6 +3,7 @@ import base64
 import datetime
 import time
 import uuid
+import decimal
 import bson
 from bson import objectid, timestamp, datetime as bson_datetime
 import singer
@@ -16,6 +17,8 @@ INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME = False
 UPDATE_BOOKMARK_PERIOD = 1000
 COUNTS = {}
 TIMES = {}
+SCHEMA_COUNT = {}
+SCHEMA_TIMES = {}
 
 class InvalidProjectionException(Exception):
     """Raised if projection blacklists _id"""
@@ -163,7 +166,6 @@ def transform_value(value, path):
 
     return value
 
-
 def row_to_singer_record(stream, row, version, time_extracted):
     # pylint: disable=unidiomatic-typecheck
     try:
@@ -178,12 +180,133 @@ def row_to_singer_record(stream, row, version, time_extracted):
         version=version,
         time_extracted=time_extracted)
 
+def add_to_any_of(schema, value):
+    changed = False
+
+    if isinstance(value, (bson_datetime.datetime, timestamp.Timestamp, datetime.datetime)):
+        has_date = False
+        for field_schema_entry in schema:
+            if field_schema_entry.get('format') == 'date-time':
+                has_date = True
+                break
+        if not has_date:
+            schema.insert(0, {"type": "string", "format": "date-time"})
+            changed = True
+
+    elif isinstance(value, bson.decimal128.Decimal128):
+        has_date = False
+        has_decimal = False
+
+        for field_schema_entry in schema:
+            if field_schema_entry.get('format') == 'date-time':
+                has_date = True
+            if field_schema_entry.get('type') == 'number' and not field_schema_entry.get('multipleOf'):
+                field_schema_entry['multipleOf'] = decimal.Decimal('1e-34')
+                return True
+            if field_schema_entry.get('type') == 'number' and field_schema_entry.get('multipleOf'):
+                has_decimal = True
+
+        if not has_decimal:
+            if has_date:
+                schema.insert(1, {"type": "number", "multipleOf": decimal.Decimal('1e-34')})
+            else:
+                schema.insert(0, {"type": "number", "multipleOf": decimal.Decimal('1e-34')})
+            changed = True
+
+    elif isinstance(value, float):
+        has_date = False
+        has_float = False
+
+        for field_schema_entry in schema:
+            if field_schema_entry.get('format') == 'date-time':
+                has_date = True
+            if field_schema_entry.get('type') == 'number' and field_schema_entry.get('multipleOf'):
+                field_schema_entry.pop('multipleOf')
+                return True
+            if field_schema_entry.get('type') == 'number' and not field_schema_entry.get('multipleOf'):
+                has_float = True
+
+        if not has_float:
+            if has_date:
+                schema.insert(1, {"type": "number"})
+            else:
+                schema.insert(0, {"type": "number"})
+
+            changed = True
+
+    elif isinstance(value, dict):
+        has_object = False
+
+        # get pointer to object schema and see if it already existed
+        object_schema = {"type": "object", "properties": {}}
+        for field_schema_entry in schema:
+            if field_schema_entry.get('type') == 'object':
+                object_schema = field_schema_entry
+                has_object = True
+
+        # see if object schema changed
+        if row_to_schema(object_schema, value):
+            changed = True
+
+            # if it changed and existed, it's reference was modified
+            # if it changed and didn't exist, insert it
+            if not has_object:
+                schema.insert(-1, object_schema)
+    elif isinstance(value, list):
+        has_list = False
+
+        # get pointer to list's anyOf schema and see if list schema already existed
+        list_schema = {"type": "array", "items": {"anyOf": [{}]}}
+        for field_schema_entry in schema:
+            if field_schema_entry.get('type') == 'array':
+                list_schema = field_schema_entry
+                has_list = True
+        anyof_schema = list_schema['items']['anyOf']
+
+        # see if list schema changed
+        list_entry_changed = False
+        for list_entry in value:
+            list_entry_changed = add_to_any_of(anyof_schema, list_entry) or list_entry_changed
+            changed = changed or list_entry_changed
+
+        # if it changed and existed, it's reference was modified
+        # if it changed and didn't exist, insert it
+        if not has_list and list_entry_changed:
+            schema.insert(-1, list_schema)
+    return changed
+
+def row_to_schema(schema, row):
+    changed = False
+
+    for field, value in row.items():
+        if isinstance(value, (bson_datetime.datetime,
+                              timestamp.Timestamp,
+                              datetime.datetime,
+                              bson.decimal128.Decimal128,
+                              float,
+                              dict,
+                              list)):
+
+            # get pointer to field's anyOf list
+            if not schema.get('properties', {}).get(field):
+                schema['properties'][field] = {'anyOf': [{}]}
+            anyof_schema = schema['properties'][field]['anyOf']
+
+            # add value's schema to anyOf list
+            changed = add_to_any_of(anyof_schema, value) or changed
+
+    return changed
+
 def get_sync_summary(catalog):
     headers = [['database',
                 'collection',
                 'replication method',
                 'total records',
-                'write speed']]
+                'write speed',
+                'total time',
+                'schemas written',
+                'schema build duration',
+                'percent building schemas']]
 
     rows = []
     for stream_id, stream_count in COUNTS.items():
@@ -194,13 +317,21 @@ def get_sync_summary(catalog):
         replication_method = metadata.get(md_map, (), 'replication-method')
 
         stream_time = TIMES[stream_id]
+        schemas_written = SCHEMA_COUNT[stream_id]
+        schema_duration = SCHEMA_TIMES[stream_id]
         if stream_time == 0:
             stream_time = 0.000001
-        row = [db_name,
-               collection_name,
-               replication_method,
-               '{} records'.format(stream_count),
-               '{:.1f} records/second'.format(stream_count/stream_time)]
+        row = [
+            db_name,
+            collection_name,
+            replication_method,
+            '{} records'.format(stream_count),
+            '{:.1f} records/second'.format(stream_count/stream_time),
+            '{:.5f} seconds'.format(stream_time),
+            '{} schemas'.format(schemas_written),
+            '{:.5f} seconds'.format(schema_duration),
+            '{:.2f}%'.format(100*schema_duration/stream_time)
+        ]
         rows.append(row)
 
     data = headers + rows

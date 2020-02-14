@@ -47,6 +47,17 @@ def update_bookmarks(state, tap_stream_id, ts):
 
     return state
 
+def write_schema(schema, row, stream):
+    schema_build_start_time = time.time()
+    if common.row_to_schema(schema, row):
+        singer.write_message(singer.SchemaMessage(
+            stream=common.calculate_destination_stream_name(stream),
+            schema=schema,
+            key_properties=['_id']))
+        common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
+    common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
+
+
 def transform_projection(projection):
     base_projection = {
         "ts": 1, "ns": 1, "op": 1, 'o2': 1
@@ -129,7 +140,7 @@ def sync_collection(client, stream, state, stream_projection):
                 tap_stream_id, oplog_query, projection, oplog_replay)
 
     update_buffer = set()
-
+    schema = {"type": "object", "properties": {}}
     # consider adding oplog_replay, but this would require removing the projection
     # default behavior is a non_tailable cursor but we might want a tailable one
     # regardless of whether its long lived or not.
@@ -156,8 +167,9 @@ def sync_collection(client, stream, state, stream_projection):
                 continue
 
             row_op = row['op']
-            if row_op == 'i':
 
+            if row_op == 'i':
+                write_schema(schema, row['o'], stream)
                 record_message = common.row_to_singer_record(stream,
                                                              row['o'],
                                                              version,
@@ -178,6 +190,7 @@ def sync_collection(client, stream, state, stream_projection):
                 # Delete ops only contain the _id of the row deleted
                 row['o'][SDC_DELETED_AT] = row['ts']
 
+                write_schema(schema, row['o'], stream)
                 record_message = common.row_to_singer_record(stream,
                                                              row['o'],
                                                              version,
@@ -197,6 +210,7 @@ def sync_collection(client, stream, state, stream_projection):
                                                  stream_projection,
                                                  database_name,
                                                  collection_name):
+                    write_schema(schema, buffered_row, stream)
                     record_message = common.row_to_singer_record(stream,
                                                                  buffered_row,
                                                                  version,
@@ -214,6 +228,7 @@ def sync_collection(client, stream, state, stream_projection):
                                                  stream_projection,
                                                  database_name,
                                                  collection_name):
+                    write_schema(schema, buffered_row, stream)
                     record_message = common.row_to_singer_record(stream,
                                                                  buffered_row,
                                                                  version,
@@ -232,6 +247,7 @@ def sync_collection(client, stream, state, stream_projection):
                                          stream_projection,
                                          database_name,
                                          collection_name):
+            write_schema(schema, buffered_row, stream)
             record_message = common.row_to_singer_record(stream,
                                                          buffered_row,
                                                          version,

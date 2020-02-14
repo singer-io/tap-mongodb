@@ -280,6 +280,9 @@ def sync_stream(client, stream, state):
 
     common.COUNTS[tap_stream_id] = 0
     common.TIMES[tap_stream_id] = 0
+    common.SCHEMA_COUNT[tap_stream_id] = 0
+    common.SCHEMA_TIMES[tap_stream_id] = 0
+
 
     md_map = metadata.to_map(stream['metadata'])
     replication_method = metadata.get(md_map, (), 'replication-method')
@@ -293,6 +296,7 @@ def sync_stream(client, stream, state):
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
     write_schema_message(stream)
+    common.SCHEMA_COUNT[tap_stream_id] += 1
 
     with metrics.job_timer('sync_table') as timer:
         timer.tags['database'] = database_name
