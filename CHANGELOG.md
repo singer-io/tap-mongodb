@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0
+  * Build and write schema messages [#40](https://github.com/singer-io/tap-mongodb/pull/40) The main changes are:
+    1. date-time fields will have a `"type": "string", "format": "date-time"` schema that will cause them to get loaded as date-times instead of strings
+    2. decimal fields will have a `"type": "number", "multipleOf": 1e-34` schema written
+    3. double fields will have a `"type": "number"` schema written that should prevent them from splitting between doubles/decimals depending on the precision
+
 ## 1.1.0
   * Add optional `verify_mode` config value to replace the assumptions in version 1.0.4 [#38](https://github.com/singer-io/tap-mongodb/pull/38)
 
