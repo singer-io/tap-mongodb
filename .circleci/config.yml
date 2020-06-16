@@ -39,6 +39,7 @@ jobs:
       - run:
           name: "Unit Tests"
           command: |
+            source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
             nosetests tests/unittests/
       - run:
           name: 'Integration Tests'
