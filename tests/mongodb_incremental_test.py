@@ -20,7 +20,7 @@ import singer
 from functools import reduce
 from singer import utils, metadata
 import decimal
-from tap_tester.suites.mongodb.mongodb_common import drop_all_collections
+from mongodb_common import drop_all_collections
 from datetime import datetime, timedelta
 
 

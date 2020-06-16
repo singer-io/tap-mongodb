@@ -17,7 +17,7 @@ import bson
 import singer
 from functools import reduce
 from singer import utils, metadata
-from tap_tester.suites.mongodb.mongodb_common import drop_all_collections
+from mongodb_common import drop_all_collections
 import decimal
 
 
