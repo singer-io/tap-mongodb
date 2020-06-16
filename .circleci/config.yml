@@ -37,19 +37,22 @@ jobs:
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
             make test
       - run:
-          name: 'Tap Tester'
+          name: "Unit Tests"
+          command: |
+            nosetests tests/unittests/
+      - run:
+          name: 'Integration Tests'
           command: |
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox tap-tester.env
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            cd /root/project/
-            run-a-test --tap=tap-mongodb \
-                       --target=target-stitch \
-                       --orchestrator=stitch-orchestrator \
-                       --email=harrison+sandboxtest@stitchdata.com \
-                       --password=$SANDBOX_PASSWORD \
-                       --client-id=50 \
-                       tap_tester.suites.mongodb
+            run-test --tap=tap-mongodb \
+                     --target=target-stitch \
+                     --orchestrator=stitch-orchestrator \
+                     --email=harrison+sandboxtest@stitchdata.com \
+                     --password=$SANDBOX_PASSWORD \
+                     --client-id=50 \
+                     tests
 workflows:
   version: 2
   commit:
