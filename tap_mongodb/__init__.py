@@ -363,6 +363,7 @@ def main_impl():
         config['password'] = parsedUri['password']
         config['authSource'] = parsedUri['options']['authsource']
         config['user'] = parsedUri['username']
+        config['database'] = parsedUri['database']
 
         client = pymongo.MongoClient(config['connection_uri'])
         LOGGER.info('Connected to MongoDB host: %s, version: %s',
