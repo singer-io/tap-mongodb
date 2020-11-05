@@ -357,6 +357,13 @@ def main_impl():
 
     if 'connection_uri' in config.keys():
         # Connect using the DNS string
+        parsedUri = pymongo.uri_parser.parse_uri(config['connection_uri'])
+
+        config['username'] = parsedUri['username']
+        config['password'] = parsedUri['password']
+        config['authSource'] = parsedUri['options']['authsource']
+        config['user'] = parsedUri['username']
+
         client = pymongo.MongoClient(config['connection_uri'])
         LOGGER.info('Connected to MongoDB host: %s, version: %s',
                     config['connection_uri'],
