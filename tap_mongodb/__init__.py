@@ -5,7 +5,8 @@ import ssl
 import sys
 import time
 import pymongo
-from bson import timestamp
+import datetime
+from bson import timestamp, objectid
 
 import singer
 from singer import metadata, metrics, utils
@@ -122,6 +123,43 @@ def produce_collection_schema(collection):
     collection_db_name = collection.database.name
 
     is_view = collection.options().get('viewOn') is not None
+    item = collection.find_one()
+    schema_properties = {}
+
+    if item:
+        for k in item:
+            value = item[k]
+
+            if isinstance(value, dict):
+                schema_properties[k] = {
+                    "type": "object"
+                }
+            elif isinstance(value, int):
+                schema_properties[k] = {
+                    "type": "integer",
+                }
+            elif isinstance(value, objectid.ObjectId):
+                schema_properties[k] = {
+                    "type": "string",
+                }
+            elif isinstance(value, datetime.datetime):
+                schema_properties[k] = {
+                    "type": "string",
+                    "format": "date-time"
+                }
+            elif isinstance(value, str):
+                schema_properties[k] = {
+                    "type": "string"
+                }
+            elif isinstance(value, bool):
+                schema_properties[k] = {
+                    "type": "boolean"
+                }
+            elif isinstance(value, object):
+                schema_properties[k] = {
+                    "type": "object"
+                }
+
 
     mdata = {}
     mdata = metadata.write(mdata, (), 'table-key-properties', ['_id'])
@@ -153,12 +191,7 @@ def produce_collection_schema(collection):
         'tap_stream_id': "{}-{}".format(collection_db_name, collection_name),
         'schema': {
             'type': 'object',
-            'properties': {
-                '_id': {
-                    'type': ['string'],
-                    "inclusion": "automatic"
-                }
-            }
+            'properties': schema_properties
         }
     }
 
@@ -364,7 +397,6 @@ def main_impl():
     if 'connection_uri' in config.keys():
         # Connect using the DNS string
         parsedUri = pymongo.uri_parser.parse_uri(config['connection_uri'])
-
         config['username'] = parsedUri['username']
         config['password'] = parsedUri['password']
         config['authSource'] = parsedUri['options']['authsource']
