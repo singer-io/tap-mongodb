@@ -153,7 +153,7 @@ def produce_collection_schema(collection):
             elif isinstance(value, datetime.datetime):
                 schema_properties[k] = {
                     "inclusion": "available",
-                    "type": "string",
+                    "type": ["null", "string"],
                     "format": "date-time"
                 }
             elif isinstance(value, str):
@@ -172,6 +172,14 @@ def produce_collection_schema(collection):
                     "type": "object"
                 }
 
+
+    propertiesBreadcrumb = []
+
+    for k in schema_properties:
+        propertiesBreadcrumb.append({
+            "breadcrumb": ["properties", k],
+            "metadata": {"selected-by-default": True}
+            })
 
     mdata = {}
     mdata = metadata.write(mdata, (), 'table-key-properties', ['_id'])
@@ -199,7 +207,7 @@ def produce_collection_schema(collection):
     return {
         'table_name': collection_name,
         'stream': collection_name,
-        'metadata': metadata.to_list(mdata),
+        'metadata': metadata.to_list(mdata) + propertiesBreadcrumb,
         'tap_stream_id': "{}-{}".format(collection_db_name, collection_name),
         'schema': {
             'type': 'object',
