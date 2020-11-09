@@ -130,33 +130,45 @@ def produce_collection_schema(collection):
         for k in item:
             value = item[k]
 
-            if isinstance(value, dict):
+            if k == '_id':
                 schema_properties[k] = {
+                    "inclusion": "automatic",
+                    "type": "string"
+                }
+            elif isinstance(value, dict):
+                schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "object"
                 }
             elif isinstance(value, int):
                 schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "integer",
                 }
             elif isinstance(value, objectid.ObjectId):
                 schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "string",
                 }
             elif isinstance(value, datetime.datetime):
                 schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "string",
                     "format": "date-time"
                 }
             elif isinstance(value, str):
                 schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "string"
                 }
             elif isinstance(value, bool):
                 schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "boolean"
                 }
             elif isinstance(value, object):
                 schema_properties[k] = {
+                    "inclusion": "available",
                     "type": "object"
                 }
 
