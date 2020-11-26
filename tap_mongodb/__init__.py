@@ -147,6 +147,12 @@ def build_schema_for_type(type):
             "type": ["null", "object"],
         }
 
+    if type == 'float':
+        return {
+            "inclusion": "available",
+            "type": "number",
+        }
+
     return {
         "inclusion": "available",
         "type": type
