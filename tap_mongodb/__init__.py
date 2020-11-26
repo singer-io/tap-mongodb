@@ -16,6 +16,7 @@ import tap_mongodb.sync_strategies.full_table as full_table
 import tap_mongodb.sync_strategies.oplog as oplog
 import tap_mongodb.sync_strategies.incremental as incremental
 
+from pymongo_schema.extract import extract_pymongo_client_schema
 
 LOGGER = singer.get_logger()
 
@@ -104,6 +105,7 @@ def get_roles(client, config):
                         roles.append(sub_role)
     return roles
 
+
 def get_databases(client, config):
     roles = get_roles(client, config)
     LOGGER.info('Roles: %s', roles)
@@ -118,60 +120,67 @@ def get_databases(client, config):
     return db_names
 
 
-def produce_collection_schema(collection):
+def build_schema_for_type(type):
+    # If it's the _id
+    if type == 'oid':
+        return {
+            "inclusion": "automatic",
+            "type": "string"
+        }
+
+    if type == 'date':
+        return {
+            "inclusion": "available",
+            "type": ["null", "string"],
+            "format": "date-time"
+        }
+
+    if type == 'ARRAY':
+        return {
+            "inclusion": "available",
+            "type": ["null", "array"],
+        }
+
+    if type == 'OBJECT':
+        return {
+            "inclusion": "available",
+            "type": ["null", "object"],
+        }
+
+    return {
+        "inclusion": "available",
+        "type": type
+    }
+
+
+def build_schema_for_level(properties):
+    schema_properties = {}
+
+    for propertyName, propertyInfo in properties.items():
+        property_type = propertyInfo['type']
+
+        # Add the field to the schema
+        property_schema = build_schema_for_type(property_type)
+
+        # If we have an object we need to build the schema inside
+        if property_type == 'OBJECT':
+            property_schema['properties'] = build_schema_for_level(propertyInfo['object'])
+
+        schema_properties[propertyName] = property_schema
+
+    return schema_properties
+
+
+def produce_collection_schema(collection, client):
     collection_name = collection.name
     collection_db_name = collection.database.name
 
     is_view = collection.options().get('viewOn') is not None
-    item = collection.find_one()
-    schema_properties = {}
 
-    if item:
-        for k in item:
-            value = item[k]
-
-            if k == '_id':
-                schema_properties[k] = {
-                    "inclusion": "automatic",
-                    "type": "string"
-                }
-            elif isinstance(value, dict):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": "object"
-                }
-            elif isinstance(value, int):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": "integer",
-                }
-            elif isinstance(value, objectid.ObjectId):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": "string",
-                }
-            elif isinstance(value, datetime.datetime):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": ["null", "string"],
-                    "format": "date-time"
-                }
-            elif isinstance(value, str):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": "string"
-                }
-            elif isinstance(value, bool):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": "boolean"
-                }
-            elif isinstance(value, object):
-                schema_properties[k] = {
-                    "inclusion": "available",
-                    "type": "object"
-                }
-
+    # Analyze and build schema recursively
+    schema = extract_pymongo_client_schema(client, collection_names=collection_name)
+    extracted_properties = schema[collection_db_name][collection_name]['object']
+    schema_properties = build_schema_for_level(extracted_properties)
 
     propertiesBreadcrumb = []
 
@@ -179,7 +188,7 @@ def produce_collection_schema(collection):
         propertiesBreadcrumb.append({
             "breadcrumb": ["properties", k],
             "metadata": {"selected-by-default": True}
-            })
+        })
 
     mdata = {}
     mdata = metadata.write(mdata, (), 'table-key-properties', ['_id'])
@@ -235,9 +244,9 @@ def do_discover(client, config):
 
             LOGGER.info("Getting collection info for db: %s, collection: %s",
                         db_name, collection_name)
-            streams.append(produce_collection_schema(collection))
+            streams.append(produce_collection_schema(collection, client))
 
-    json.dump({'streams' : streams}, sys.stdout, indent=2)
+    json.dump({'streams': streams}, sys.stdout, indent=2)
 
 
 def is_stream_selected(stream):
@@ -249,7 +258,6 @@ def is_stream_selected(stream):
 
 
 def get_streams_to_sync(streams, state):
-
     # get selected streams
     selected_streams = [s for s in streams if is_stream_selected(s)]
     # prioritize streams that have not been processed
@@ -272,7 +280,7 @@ def get_streams_to_sync(streams, state):
             lambda s: s['tap_stream_id'] == currently_syncing,
             ordered_streams))
         non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id']
-                                                    != currently_syncing,
+                                                              != currently_syncing,
                                                     ordered_streams))
 
         streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
@@ -287,6 +295,7 @@ def write_schema_message(stream):
         stream=common.calculate_destination_stream_name(stream),
         schema=stream['schema'],
         key_properties=['_id']))
+
 
 def load_stream_projection(stream):
     md_map = metadata.to_map(stream['metadata'])
@@ -304,9 +313,10 @@ def load_stream_projection(stream):
     if stream_projection and stream_projection.get('_id') == 0:
         raise common.InvalidProjectionException(
             "Projection blacklists key property id for collection {}" \
-            .format(stream['tap_stream_id']))
+                .format(stream['tap_stream_id']))
 
     return stream_projection
+
 
 def clear_state_on_replication_change(stream, state):
     md_map = metadata.to_map(stream['metadata'])
@@ -334,6 +344,7 @@ def clear_state_on_replication_change(stream, state):
 
     return state
 
+
 def sync_stream(client, stream, state):
     tap_stream_id = stream['tap_stream_id']
 
@@ -341,7 +352,6 @@ def sync_stream(client, stream, state):
     common.TIMES[tap_stream_id] = 0
     common.SCHEMA_COUNT[tap_stream_id] = 0
     common.SCHEMA_TIMES[tap_stream_id] = 0
-
 
     md_map = metadata.to_map(stream['metadata'])
     replication_method = metadata.get(md_map, (), 'replication-method')
@@ -409,7 +419,6 @@ def do_sync(client, catalog, state):
 
 
 def main_impl():
-
     # Check if we use DNS string or not
     args = utils.parse_args([])
     config = args.config
@@ -462,6 +471,7 @@ def main_impl():
     elif args.catalog:
         state = args.state or {}
         do_sync(client, args.catalog.to_dict(), state)
+
 
 def main():
     try:
