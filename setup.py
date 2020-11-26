@@ -14,6 +14,7 @@ setup(name='tap-mongodb',
           'pymongo[srv]==3.8.0',
           'tzlocal==2.0.0',
           'terminaltables==3.1.0',
+          'pymongo-schema @ https://github.com/pajachiet/pymongo-schema/archive/master.zip'
       ],
       extras_require={
           'dev': [
