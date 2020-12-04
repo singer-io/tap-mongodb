@@ -184,7 +184,8 @@ def produce_collection_schema(collection, client):
     is_view = collection.options().get('viewOn') is not None
 
     # Analyze and build schema recursively
-    schema = extract_pymongo_client_schema(client, collection_names=collection_name)
+    #schema = extract_pymongo_client_schema(client, collection_names=collection_name)
+    schema = extract_pymongo_client_schema(client, database_names=collection_db_name, collection_names=collection_name)
     extracted_properties = schema[collection_db_name][collection_name]['object']
     schema_properties = build_schema_for_level(extracted_properties)
 
