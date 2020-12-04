@@ -153,6 +153,13 @@ def build_schema_for_type(type):
             "type": "number",
         }
 
+    if type == "general_scalar":
+        return {
+            "inclusion": "available",
+            "type": ["null", "mixed"],
+
+        }
+
     return {
         "inclusion": "available",
         "type": type
