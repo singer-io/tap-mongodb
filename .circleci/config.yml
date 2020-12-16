@@ -58,14 +58,16 @@ workflows:
   version: 2
   commit:
     jobs:
-      - build
+      - build:
+          context: circleci-user
   build_daily:
     triggers:
       - schedule:
-          cron: "0 0 * * *"
+          cron: "0 19 * * *"
           filters:
             branches:
               only:
                 - master
     jobs:
-      - build
+      - build:
+          context: circleci-user
