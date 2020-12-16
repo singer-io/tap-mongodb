@@ -115,7 +115,7 @@ def safe_transform_datetime(value, path):
                                                                               value.microsecond)
         raise MongoInvalidDateTimeException("Found invalid datetime at [{}]: {}".format(
             ".".join(map(str, path)),
-            value))
+            value)) from ex
     return utils.strftime(utc_datetime)
 
 # pylint: disable=too-many-return-statements,too-many-branches
@@ -172,7 +172,7 @@ def row_to_singer_record(stream, row, version, time_extracted):
         row_to_persist = {k:transform_value(v, [k]) for k, v in row.items()
                           if type(v) not in [bson.min_key.MinKey, bson.max_key.MaxKey]}
     except MongoInvalidDateTimeException as ex:
-        raise Exception("Error syncing collection {}, object ID {} - {}".format(stream["tap_stream_id"], row['_id'], ex))
+        raise Exception("Error syncing collection {}, object ID {} - {}".format(stream["tap_stream_id"], row['_id'], ex)) from ex
 
     return singer.RecordMessage(
         stream=calculate_destination_stream_name(stream),
