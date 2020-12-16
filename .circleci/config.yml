@@ -28,9 +28,13 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            virtualenv -p python3 /usr/local/share/virtualenvs/tap-mongodb
-            source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
+            python3 -mvenv /usr/local/share/virtualenvs/tap-shopify
+            source /usr/local/share/virtualenvs/tap-shopify/bin/activate
+            pip install -U 'pip<19.2' 'setuptools<51.0.0'
             pip install .[dev]
+            # virtualenv -p python3 /usr/local/share/virtualenvs/tap-mongodb
+            # source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
+            # pip install .[dev]
       - run:
           name: 'pylint'
           command: |
