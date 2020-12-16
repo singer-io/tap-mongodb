@@ -51,6 +51,7 @@ jobs:
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox tap-tester.env
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            ls /usr/local/share/virtualenvs/
             run-test --tap=tap-mongodb \
                      --target=target-stitch \
                      --orchestrator=stitch-orchestrator \
