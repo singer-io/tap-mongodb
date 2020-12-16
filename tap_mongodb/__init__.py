@@ -237,10 +237,10 @@ def load_stream_projection(stream):
 
     try:
         stream_projection = json.loads(stream_projection)
-    except:
+    except Exception as ex:
         err_msg = "The projection: {} for stream {} is not valid json"
         raise common.InvalidProjectionException(err_msg.format(stream_projection,
-                                                               stream['tap_stream_id']))
+                                                               stream['tap_stream_id'])) from ex
 
     if stream_projection and stream_projection.get('_id') == 0:
         raise common.InvalidProjectionException(
