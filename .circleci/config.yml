@@ -32,6 +32,7 @@ jobs:
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
             pip install -U 'pip<19.2' 'setuptools<51.0.0'
             pip install .[dev]
+
             # virtualenv -p python3 /usr/local/share/virtualenvs/tap-mongodb
             # source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
             # pip install .[dev]
@@ -51,7 +52,13 @@ jobs:
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox tap-tester.env
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
+
+            echo "Kyle this is the ls for '/usr/local/share/virtualenvs/'
             ls /usr/local/share/virtualenvs/
+
+            echo "Kyle this is the value for STITCH_TAP_NAME"
+            echo $STITCH_TAP_NAME
+
             run-test --tap=tap-mongodb \
                      --target=target-stitch \
                      --orchestrator=stitch-orchestrator \
