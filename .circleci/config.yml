@@ -53,7 +53,7 @@ jobs:
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
 
-            echo "Kyle this is the ls for '/usr/local/share/virtualenvs/'
+            echo "Kyle this is the ls for '/usr/local/share/virtualenvs/'"
             ls /usr/local/share/virtualenvs/
 
             echo "Kyle this is the value for STITCH_TAP_NAME"
