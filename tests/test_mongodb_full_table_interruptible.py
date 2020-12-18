@@ -91,7 +91,7 @@ class MongoDBFullTableInterruptible(unittest.TestCase):
         return "tap_tester_mongodb_full_table_interruptible"
 
     def tap_name(self):
-        return "tap_tester_mongodb_full_table_interruptible"
+        return "tap-mongodb"
 
     def get_type(self):
         return "platform.mongodb"
