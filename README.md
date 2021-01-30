@@ -16,7 +16,7 @@ pip install tap-mongodb
 
 ## Set up Config file
 Create json file called `config.json`, with the following contents:
-```
+```json
 {
   "password": "<password>",
   "user": "<username>",
@@ -25,7 +25,22 @@ Create json file called `config.json`, with the following contents:
   "database": "<database name>"
 }
 ```
-The folowing parameters are optional for your config file:
+
+All of the above attributes are required by the tap to connect to your mongo instance. 
+
+
+Alternatively, you can use a database URL to connect in which case the above settings will be ignored and are thus optional.
+Note that you have to include settings like `replica_set` or `ssl` directly in the URL instead of
+providing them separately if you use a database URL to establish the connection.
+
+For example, to connect to a database that uses DNS SRV records:
+```json
+{
+  "database_url": "mongodb+srv://user:myRealPassword@cluster0.mongodb.net/test?w=majority&tls=true"
+}
+```
+
+The following parameters are optional for your config file:
 
 | Name | Type | Description |
 | -----|------|------------ |
@@ -33,7 +48,6 @@ The folowing parameters are optional for your config file:
 |`ssl` | Boolean | can be set to true to connect using ssl |
 | `include_schema_in_destination_stream_name` | Boolean | forces the stream names to take the form `<database_name>_<collection_name>` instead of `<collection_name>`|
 
-All of the above attributes are required by the tap to connect to your mongo instance. 
 
 ## Run in discovery mode
 Run the following command and redirect the output into the catalog file
