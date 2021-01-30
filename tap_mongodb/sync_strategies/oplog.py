@@ -129,7 +129,7 @@ def sync_collection(client, stream, state, stream_projection):
     start_time = time.time()
 
     oplog_query = {
-        'ts': {'$gte': oplog_ts}
+        'ts': {'$gt': oplog_ts}
     }
 
     projection = transform_projection(stream_projection)
