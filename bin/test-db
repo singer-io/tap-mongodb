@@ -10,13 +10,14 @@ image_name = "mongo"
 image_tag = "4.2.0-bionic"
 
 def start_container(name):
+
     START_COMMAND = """
     sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}"\
         -p {2}:{2} --name {3} \
         -d {4}:{5} --replSet rs0
     """.format(os.getenv('TAP_MONGODB_USER'),
                os.getenv('TAP_MONGODB_PASSWORD'),
-               27017,
+               os.getenv('TAP_MONGODB_PORT'),
                name,
                image_name,
                image_tag)
