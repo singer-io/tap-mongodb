@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.0.1
+  * Modify `get_databases` function to return a unique list of databases [#58](https://github.com/singer-io/tap-mongodb/pull/58)
+
 ## 2.0.0
   * Build and write schema messages [#40](https://github.com/singer-io/tap-mongodb/pull/40) The main changes are:
     1. date-time fields will have a `"type": "string", "format": "date-time"` schema that will cause them to get loaded as date-times instead of strings
