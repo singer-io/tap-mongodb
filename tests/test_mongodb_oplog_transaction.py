@@ -189,18 +189,21 @@ class MongoDBOplog(unittest.TestCase):
         with get_test_connection() as client:
             db = client['simple_db'][self.table_name]
             with client.start_session() as session:
-                db.insert_many([{"int_field": x, "string_field": str(x)} for x in range(51, 61)], session=session)
+                with session.start_transaction():
+                    db.insert_many([{"int_field": x, "string_field": str(x)} for x in range(51, 61)], session=session)
 
             # Insert 10 docs in one transaction, update 5 of them
             with client.start_session() as session:
-                db.insert_many([{"int_field": x, "string_field": str(x)} for x in range(61, 71)], session=session)
-                for x in range(61, 66):
-                    db.update_one({"string_field": str(x)}, {"$inc": {"int_field": 1}}, session=session)
+                with session.start_transaction():
+                    db.insert_many([{"int_field": x, "string_field": str(x)} for x in range(61, 71)], session=session)
+                    for x in range(61, 66):
+                        db.update_one({"string_field": str(x)}, {"$inc": {"int_field": 1}}, session=session)
 
             # Update 5 docs in one transaction from the the first transaction
             with client.start_session() as session:
-                for x in range(51, 56):
-                    db.update_one({"string_field": str(x)}, {"$inc": {"int_field": 1}}, session=session)
+                with session.start_transaction():
+                    for x in range(51, 56):
+                        db.update_one({"string_field": str(x)}, {"$inc": {"int_field": 1}}, session=session)
 
 
         #  -----------------------------------
