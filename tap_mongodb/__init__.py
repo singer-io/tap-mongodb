@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import copy
 import json
+import logging
 import ssl
 import sys
 import time
 import pymongo
 import datetime
-from bson import timestamp, objectid
+from bson import errors
 
 import singer
 from singer import metadata, metrics, utils
@@ -192,7 +193,20 @@ def produce_collection_schema(collection, client):
 
     # Analyze and build schema recursively
     #schema = extract_pymongo_client_schema(client, collection_names=collection_name)
-    schema = extract_pymongo_client_schema(client, database_names=collection_db_name, collection_names=collection_name)
+    try:
+        schema = extract_pymongo_client_schema(
+            client,
+            database_names=collection_db_name,
+            collection_names=collection_name,
+            sample_size=1000
+        )
+    except errors.InvalidBSON as e:
+        logging.warning("ignored db {}.{} due to BSON error: {}".format(
+            collection_db_name,
+            collection_name,
+            str(e)
+        ))
+        return None
     extracted_properties = schema[collection_db_name][collection_name]['object']
     schema_properties = build_schema_for_level(extracted_properties)
 
@@ -258,7 +272,9 @@ def do_discover(client, config):
 
             LOGGER.info("Getting collection info for db: %s, collection: %s",
                         db_name, collection_name)
-            streams.append(produce_collection_schema(collection, client))
+            stream = produce_collection_schema(collection, client)
+            if stream is not None:
+                streams.append(stream)
 
     json.dump({'streams': streams}, sys.stdout, indent=2)
 
