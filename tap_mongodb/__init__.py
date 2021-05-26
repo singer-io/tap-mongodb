@@ -512,7 +512,7 @@ def main_impl():
 
         client = pymongo.MongoClient(config['connection_uri'])
         LOGGER.info('Connected to MongoDB host: %s, version: %s',
-                    config['connection_uri'],
+                    config['connection_uri'].replace(config.get("password"), "********"),
                     client.server_info().get('version', 'unknown'))
     else:
         # Connect using the connection parameters
