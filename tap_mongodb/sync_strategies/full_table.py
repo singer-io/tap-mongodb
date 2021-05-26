@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 import copy
+import logging
 import time
 import pymongo
 import singer
 from singer import metadata, utils
 import tap_mongodb.sync_strategies.common as common
-
+from bson import errors
 LOGGER = singer.get_logger()
 
 def get_max_id_value(collection):
@@ -106,7 +107,14 @@ def sync_collection(client, stream, state, projection):
         start_time = time.time()
 
         schema = {"type": "object", "properties": {}}
-        for row in cursor:
+        while True:
+            try:
+                row = next(cursor)
+            except StopIteration:
+                break
+            except errors.InvalidBSON as err:
+                logging.warning("ignored invalid record: {}".format(str(err)))
+                continue
             rows_saved += 1
 
             schema_build_start_time = time.time()

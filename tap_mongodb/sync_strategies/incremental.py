@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import copy
+import logging
 import time
 import pymongo
 import singer
 from singer import metadata, utils
+from bson import errors
 import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
@@ -90,8 +92,14 @@ def sync_collection(client, stream, state, projection):
         rows_saved = 0
         time_extracted = utils.now()
         start_time = time.time()
-
-        for row in cursor:
+        while True:
+            try:
+                row = next(cursor)
+            except StopIteration:
+                break
+            except errors.InvalidBSON as err:
+                logging.warning("ignored invalid record: {}".format(str(err)))
+                continue
             schema_build_start_time = time.time()
             if common.row_to_schema(schema, row):
                 singer.write_message(singer.SchemaMessage(
