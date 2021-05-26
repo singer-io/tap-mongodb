@@ -198,7 +198,7 @@ def produce_collection_schema(collection, client):
             client,
             database_names=collection_db_name,
             collection_names=collection_name,
-            sample_size=1000
+            #sample_size=1000
         )
     except errors.InvalidBSON as e:
         logging.warning("ignored db {}.{} due to BSON error: {}".format(
