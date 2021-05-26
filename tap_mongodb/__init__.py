@@ -4,9 +4,8 @@ import json
 import logging
 import ssl
 import sys
-import time
 import pymongo
-import datetime
+from pymongo.collection import Collection
 from bson import errors
 
 import singer
@@ -17,7 +16,7 @@ import tap_mongodb.sync_strategies.full_table as full_table
 import tap_mongodb.sync_strategies.oplog as oplog
 import tap_mongodb.sync_strategies.incremental as incremental
 
-from pymongo_schema.extract import extract_pymongo_client_schema
+from pymongo_schema import extract
 
 LOGGER = singer.get_logger()
 
@@ -185,7 +184,44 @@ def build_schema_for_level(properties):
     return schema_properties
 
 
-def produce_collection_schema(collection, client):
+def _fault_tolerant_extract_collection_schema(collection: Collection, sample_size: int = None):
+    """
+    @see extract.extract_collection_schema - but catches InvalidBSON errors
+    """
+    logger = logging.getLogger()
+    collection_schema = {
+        'count': 0,
+        "object": extract.init_empty_object_schema()
+    }
+
+    n = collection.count()
+    collection_schema['count'] = n
+    if sample_size:
+        documents = collection.aggregate([{'$sample': {'size': sample_size}}], allowDiskUse=True)
+    else:
+        documents = collection.find({})
+    scan_count = sample_size or n
+    i = 0
+
+    while True:
+        try:
+            document = next(documents)
+        except StopIteration:
+            break
+        except errors.InvalidBSON as err:
+            logger.warning("ignore invalid record: {}".format(str(err)))
+            continue
+        extract.add_document_to_object_schema(document, collection_schema['object'])
+        i += 1
+        if i % 10 ** 5 == 0 or i == scan_count:
+            logger.info('   scanned %s documents out of %s (%.2f %%)', i, scan_count, (100. * i) / scan_count)
+
+    extract.post_process_schema(collection_schema)
+    collection_schema = extract.recursive_default_to_regular_dict(collection_schema)
+    return collection_schema
+
+
+def produce_collection_schema(collection: Collection, client):
     collection_name = collection.name
     collection_db_name = collection.database.name
 
@@ -194,12 +230,15 @@ def produce_collection_schema(collection, client):
     # Analyze and build schema recursively
     #schema = extract_pymongo_client_schema(client, collection_names=collection_name)
     try:
-        schema = extract_pymongo_client_schema(
-            client,
-            database_names=collection_db_name,
-            collection_names=collection_name,
-            #sample_size=1000
-        )
+        schema = _fault_tolerant_extract_collection_schema(collection, sample_size=None)
+        """
+        TODO: 
+        without sample_size it always downloads all data to extract the schema,
+        but with it might not get types for all fields and fail writing
+        
+        maybe it should load the schema with a sample_size, but in the actual import build the
+        schema message out of all data?
+        """
     except errors.InvalidBSON as e:
         logging.warning("ignored db {}.{} due to BSON error: {}".format(
             collection_db_name,
@@ -207,7 +246,7 @@ def produce_collection_schema(collection, client):
             str(e)
         ))
         return None
-    extracted_properties = schema[collection_db_name][collection_name]['object']
+    extracted_properties = schema['object']
     schema_properties = build_schema_for_level(extracted_properties)
 
     propertiesBreadcrumb = []
@@ -256,7 +295,14 @@ def produce_collection_schema(collection, client):
 def do_discover(client, config):
     streams = []
 
-    for db_name in get_databases(client, config):
+    db_name = config.get("database")
+
+    if db_name == "admin":
+        databases = get_databases(client, config)
+    else:
+        databases = [db_name]
+
+    for db_name in databases:
         # pylint: disable=invalid-name
         db = client[db_name]
 
@@ -275,7 +321,6 @@ def do_discover(client, config):
             stream = produce_collection_schema(collection, client)
             if stream is not None:
                 streams.append(stream)
-
     json.dump({'streams': streams}, sys.stdout, indent=2)
 
 
@@ -460,7 +505,10 @@ def main_impl():
         config['password'] = parsedUri['password']
         config['authSource'] = parsedUri['options']['authsource']
         config['user'] = parsedUri['username']
-        config['database'] = parsedUri['database']
+        config['database'] = parsedUri.get('database')
+
+        if config.get("database") is None:
+            config["database"] = "admin"
 
         client = pymongo.MongoClient(config['connection_uri'])
         LOGGER.info('Connected to MongoDB host: %s, version: %s',
