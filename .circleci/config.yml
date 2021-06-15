@@ -27,7 +27,7 @@ jobs:
       - run:
           name: 'Setup Mongo'
           command: |
-            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox tap-tester.env
+            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
             source tap-tester.env
             wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | apt-key add -
             echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.2 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.2.list
@@ -77,7 +77,7 @@ workflows:
   build_daily:
     triggers:
       - schedule:
-          cron: "0 19 * * *"
+          cron: "0 6 * * *"
           filters:
             branches:
               only:
