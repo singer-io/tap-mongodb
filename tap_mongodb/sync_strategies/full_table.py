@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import copy
+import datetime
+import json
 import logging
 import time
 import pymongo
@@ -7,6 +9,8 @@ import singer
 from singer import metadata, utils
 import tap_mongodb.sync_strategies.common as common
 from bson import errors
+
+from pprint import pprint
 LOGGER = singer.get_logger()
 
 def get_max_id_value(collection):
@@ -71,6 +75,7 @@ def sync_collection(client, stream, state, projection):
                                           stream['tap_stream_id'],
                                           'last_id_fetched')
 
+
     if max_id_value:
         # Write the bookmark if max_id_value is defined
         state = singer.write_bookmark(state,
@@ -98,60 +103,54 @@ def sync_collection(client, stream, state, projection):
     # pylint: disable=logging-format-interpolation
     LOGGER.info(query_message)
 
-
-    with collection.find({'_id': find_filter},
-                         projection,
-                         sort=[("_id", pymongo.ASCENDING)]) as cursor:
-        rows_saved = 0
-        time_extracted = utils.now()
-        start_time = time.time()
-
-        schema = {"type": "object", "properties": {}}
-        while True:
-            try:
-                row = next(cursor)
-            except StopIteration:
-                break
-            except errors.InvalidBSON as err:
-                logging.warning("ignored invalid record: {}".format(str(err)))
-                continue
-            rows_saved += 1
-
-            schema_build_start_time = time.time()
-            if common.row_to_schema(schema, row):
-                # This piece of code is commented out because
-                # we don't want multiple SCHEMA messages
-                # being output.
-                #singer.write_message(singer.SchemaMessage(
-                #    stream=common.calculate_destination_stream_name(stream),
-                #    schema=schema,
-                #    key_properties=['_id']))
-                common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
-            common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
-
-            record_message = common.row_to_singer_record(stream,
-                                                         row,
-                                                         stream_version,
-                                                         time_extracted)
-
-            singer.write_message(record_message)
-
-            state = singer.write_bookmark(state,
-                                          stream['tap_stream_id'],
-                                          'last_id_fetched',
-                                          common.class_to_string(row['_id'],
-                                                                 row['_id'].__class__.__name__))
-            state = singer.write_bookmark(state,
-                                          stream['tap_stream_id'],
-                                          'last_id_fetched_type',
-                                          row['_id'].__class__.__name__)
+    cond = {'_id': find_filter}
+    projection = {"details.availability": False}
 
 
-            if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
-                singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
-        common.COUNTS[tap_stream_id] += rows_saved
-        common.TIMES[tap_stream_id] += time.time()-start_time
+    rows_saved = 0
+    time_extracted = utils.now()
+    start_time = time.time()
+
+    schema = {"type": "object", "properties": {}}
+    for row in _find_until_complete(collection, cond, projection):
+        rows_saved += 1
+
+        schema_build_start_time = time.time()
+        if common.row_to_schema(schema, row):
+            # This piece of code is commented out because
+            # we don't want multiple SCHEMA messages
+            # being output.
+            #singer.write_message(singer.SchemaMessage(
+            #    stream=common.calculate_destination_stream_name(stream),
+            #    schema=schema,
+            #    key_properties=['_id']))
+            common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
+        common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
+
+        record_message = common.row_to_singer_record(stream,
+                                                     row,
+                                                     stream_version,
+                                                     time_extracted)
+
+        singer.write_message(record_message)
+
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'last_id_fetched',
+                                      common.class_to_string(row['_id'],
+                                                             row['_id'].__class__.__name__))
+        state = singer.write_bookmark(state,
+                                      stream['tap_stream_id'],
+                                      'last_id_fetched_type',
+                                      row['_id'].__class__.__name__)
+
+
+        if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
+            singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+
+    common.COUNTS[tap_stream_id] += rows_saved
+    common.TIMES[tap_stream_id] += time.time()-start_time
 
     # clear max pk value and last pk fetched upon successful sync
     singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
@@ -167,3 +166,33 @@ def sync_collection(client, stream, state, projection):
     singer.write_message(activate_version_message)
 
     LOGGER.info('Syncd {} records for {}'.format(rows_saved, tap_stream_id))
+
+
+def _find_until_complete(collection, cond, projection, last_id = None, skip=0):
+    has_error = False
+    if last_id is not None:
+        cond["_id"]["$gte"] = last_id
+    with collection.find(
+            cond,
+            projection,
+            sort=[("_id", pymongo.ASCENDING)],
+            skip=skip
+    ) as cursor:
+        while True:
+            try:
+                row = next(cursor)
+                skip = 0
+                last_id = row.get("_id")
+                yield row
+            except StopIteration:
+                break
+            except errors.InvalidBSON as err:
+                skip += 1
+                has_error = True
+                logging.warning("ignored invalid record ({} after id {}): {}".format(str(skip), last_id, str(err)))
+                break
+    if has_error:
+        for row in _find_until_complete(collection, cond, projection, last_id, skip):
+            yield row
+
+# https://github.com/yougov/mongo-connector/pull/487/commits/9df97e4083fe4b06aa9569f4a84522bd985a9f30
