@@ -296,7 +296,7 @@ def do_discover(client, config):
     streams = []
 
     db_name = config.get("database")
-
+    filter_collections = config.get("filter_collections", [])
     if db_name == "admin":
         databases = get_databases(client, config)
     else:
@@ -306,9 +306,11 @@ def do_discover(client, config):
         # pylint: disable=invalid-name
         db = client[db_name]
 
-        collection_names = db.list_collection_names()
+        collection_names = db.list_collection_names() # TODO: check filter of type listCollections
         for collection_name in [c for c in collection_names
                                 if not c.startswith("system.")]:
+            if filter_collections and collection_name not in filter_collections:
+                continue
 
             collection = db[collection_name]
             is_view = collection.options().get('viewOn') is not None
