@@ -17,6 +17,7 @@ import tap_mongodb.sync_strategies.oplog as oplog
 import tap_mongodb.sync_strategies.incremental as incremental
 
 from pymongo_schema import extract
+import time
 
 LOGGER = singer.get_logger()
 
@@ -52,6 +53,7 @@ ROLES_WITH_ALL_DB_FIND_PRIVILEGES = {
     'readWriteAnyDatabase',
     'root'
 }
+STEP_LIMIT = 1000000
 
 
 def get_roles(client, config):
@@ -194,28 +196,51 @@ def _fault_tolerant_extract_collection_schema(collection: Collection, sample_siz
         "object": extract.init_empty_object_schema()
     }
 
-    n = collection.count()
-    collection_schema['count'] = n
-    if sample_size:
-        documents = collection.aggregate([{'$sample': {'size': sample_size}}], allowDiskUse=True)
-    else:
-        documents = collection.find({})
-    scan_count = sample_size or n
-    i = 0
+    # count is deprecated  DEPRECATED -> could use count_documents({}), but is very slow
+    document_count = collection.estimated_document_count()
+    collection_schema['count'] = document_count
+    # if sample_size:
+    #     documents = collection.aggregate([{'$sample': {'size': sample_size}}], allowDiskUse=True)
+    # else:
+    #     documents = collection.find({})
 
-    while True:
-        try:
-            document = next(documents)
-        except StopIteration:
-            break
-        except errors.InvalidBSON as err:
-            logger.warning("ignore invalid record: {}".format(str(err)))
-            continue
-        extract.add_document_to_object_schema(document, collection_schema['object'])
-        i += 1
-        if i % 10 ** 5 == 0 or i == scan_count:
-            logger.info('   scanned %s documents out of %s (%.2f %%)', i, scan_count, (100. * i) / scan_count)
+    # TODO: there are 2 ways to solve large documents data reads per collection
+    # 1. with python multi-threads - run in parallel
+    # 2. with slice indexes containing a limit and skip
+    # The second is implemented. TO check the performance!
 
+    # get a slice of documents
+    steps = int(round(document_count / STEP_LIMIT)) + 1
+    logger.info('Total number of steps %s', steps)
+    start_time = time.time()
+    for step in range(steps):
+        start = step * STEP_LIMIT
+        stop = (step + 1) * STEP_LIMIT
+        if stop > document_count:
+            stop = document_count
+        documents = collection.find({})[start:stop]
+        scan_count = stop
+        logger.info('Step %s of %s for collection %s --- %s seconds ---', step, steps,
+                    collection.name, time.time() - start_time)
+
+        i = 0
+        while True:
+            try:
+                # Iterate over documents per step
+                document = next(documents)
+            except StopIteration:
+                break
+            except errors.InvalidBSON as err:
+                logger.warning("ignore invalid record: {}".format(str(err)))
+                continue
+
+            extract.add_document_to_object_schema(document, collection_schema['object'])
+            i += 1
+            if i == stop:
+                logger.info('Scanned %s documents out of %s (%.2f %%) in step %s', i, scan_count,
+                            (100. * i) / scan_count, step)
+
+    logger.info('FInished scanning documents of collection %s', collection.name)
     extract.post_process_schema(collection_schema)
     collection_schema = extract.recursive_default_to_regular_dict(collection_schema)
     return collection_schema
@@ -306,10 +331,10 @@ def do_discover(client, config):
         # pylint: disable=invalid-name
         db = client[db_name]
 
-        collection_names = db.list_collection_names() # TODO: check filter of type listCollections
-        for collection_name in [c for c in collection_names
-                                if not c.startswith("system.")]:
-            if filter_collections and collection_name not in filter_collections:
+        collection_names = db.list_collection_names()
+        for collection_name in collection_names:
+            if collection_name.startswith("system.") or (
+                    filter_collections and collection_name not in filter_collections):
                 continue
 
             collection = db[collection_name]
@@ -559,3 +584,7 @@ def main():
     except Exception as exc:
         LOGGER.critical(exc)
         raise exc
+
+
+if __name__ == "__main__":
+    main()
