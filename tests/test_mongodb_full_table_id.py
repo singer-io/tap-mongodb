@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -204,5 +203,3 @@ class MongoDBFullTableID(unittest.TestCase):
         for tap_stream_id in self.expected_check_streams():
             self.assertIsNone(final_state['bookmarks'][tap_stream_id].get('last_id_fetched'))
             self.assertIsNone(final_state['bookmarks'][tap_stream_id].get('max_id_value'))
-
-SCENARIOS.add(MongoDBFullTableID)

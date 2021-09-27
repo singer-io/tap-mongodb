@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -276,6 +275,3 @@ class MongoDBOplog(unittest.TestCase):
         # _ids of the documents changed
         actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_1']]).union(set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_2']]))
         self.assertEqual(changed_ids, actual)
-
-
-SCENARIOS.add(MongoDBOplog)

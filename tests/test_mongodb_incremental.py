@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -379,7 +378,3 @@ class MongoDBIncremental(unittest.TestCase):
                                                                    self.expected_pks())
         for tap_stream_id in self.expected_sync_streams():
             self.assertGreaterEqual(record_count_by_stream[tap_stream_id],self.expected_last_sync_row_counts()[tap_stream_id])
-
-
-
-SCENARIOS.add(MongoDBIncremental)

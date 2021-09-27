@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -286,5 +285,3 @@ class MongoDBProjection(unittest.TestCase):
     def test_run(self):
         for projection_mapping in self.projection_expected_keys_list():
             self.run_single_projection(projection_mapping)
-
-SCENARIOS.add(MongoDBProjection)
