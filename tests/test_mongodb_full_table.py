@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -301,5 +300,3 @@ class MongoDBFullTable(unittest.TestCase):
 
             # version matches the target version
             self.assertEqual(records_by_stream[self.tap_stream_id_to_stream()[tap_stream_id]]['table_version'], second_versions[tap_stream_id])
-
-SCENARIOS.add(MongoDBFullTable)

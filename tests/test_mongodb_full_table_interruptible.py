@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -207,5 +206,3 @@ class MongoDBFullTableInterruptible(unittest.TestCase):
         state = menagerie.get_state(conn_id)
         for tap_stream_id, stream_bookmarks in state.get('bookmarks', {}).items():
             self.assertTrue(stream_bookmarks.get('initial_full_table_complete', False))
-
-SCENARIOS.add(MongoDBFullTableInterruptible)

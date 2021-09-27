@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -232,8 +231,8 @@ class MongoDBDatatype(unittest.TestCase):
         record_id = None
         with get_test_connection() as client:
             record_id = str([x for x in client['datatype_db']['datatype_coll_1'].find()][0]['_id'])
-            
-            
+
+
         expected_record = {
             "javaScript_field": "var x, y, z;",
             "timestamp_field": "2019-08-15T19:25:57.000000Z",
@@ -263,8 +262,3 @@ class MongoDBDatatype(unittest.TestCase):
         }
 
         self.assertEquals(expected_record, records_by_stream['datatype_coll_1']['messages'][1]['data'])
-
-
-
-
-SCENARIOS.add(MongoDBDatatype)

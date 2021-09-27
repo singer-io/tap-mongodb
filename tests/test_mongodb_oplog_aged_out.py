@@ -1,4 +1,3 @@
-from tap_tester.scenario import (SCENARIOS)
 import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
@@ -191,10 +190,8 @@ class MongoDBOplogAgedOut(unittest.TestCase):
         # assert that all rows in the collection were sync'd
         for stream_id, row_count in self.expected_row_counts().items():
             self.assertGreaterEqual(record_count_by_stream[stream_id], row_count)
-        
+
         # assert that each stream has a initial_full_table_complete=True bookmark
         self.assertIsNotNone(final_state.get('bookmarks', {}).get('simple_db-simple_coll_1', {}).get('oplog_ts_time'))
         self.assertIsNotNone(final_state.get('bookmarks', {}).get('simple_db-simple_coll_1', {}).get('oplog_ts_inc'))
         self.assertTrue(final_state.get('bookmarks', {}).get('simple_db-simple_coll_1', {}).get('initial_full_table_complete'))
-        
-SCENARIOS.add(MongoDBOplogAgedOut)
