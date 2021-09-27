@@ -42,6 +42,7 @@ jobs:
             python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
             pip install -U 'pip<19.2' 'setuptools<51.0.0'
+            pip install .
             pip install .[dev]
       - run:
           name: 'pylint'
@@ -56,7 +57,6 @@ jobs:
       - run:
           name: 'Integration Tests'
           command: |
-            pip install pymongo
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             run-test --tap=tap-mongodb tests
