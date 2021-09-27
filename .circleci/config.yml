@@ -51,15 +51,15 @@ jobs:
       - run:
           name: "Unit Tests"
           command: |
-            pip install pymongo==3.8.0
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
+            pip install pymongo==3.8.0
             nosetests tests/unittests/
       - run:
           name: 'Integration Tests'
           command: |
-            pip install pymongo==3.8.0
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            pip install pymongo==3.8.0
             run-test --tap=tap-mongodb tests
       - slack/notify-on-failure:
           only_for_branches: master
