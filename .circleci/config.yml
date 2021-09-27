@@ -5,7 +5,7 @@ orbs:
 jobs:
   build:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:tap-tester-v4
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
       - image: mongo:4.2.0-bionic
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -58,13 +58,7 @@ jobs:
           command: |
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            run-test --tap=tap-mongodb \
-                     --target=target-stitch \
-                     --orchestrator=stitch-orchestrator \
-                     --email=harrison+sandboxtest@stitchdata.com \
-                     --password=$SANDBOX_PASSWORD \
-                     --client-id=50 \
-                     tests
+            run-test --tap=tap-mongodb tests
       - slack/notify-on-failure:
           only_for_branches: master
 
