@@ -110,7 +110,7 @@ def sync_collection(client, stream, state, projection):
             rows_saved += 1
 
             schema_build_start_time = time.time()
-            if common.row_to_schema(schema, row):
+            if 'schema' not in stream and common.row_to_schema(schema, row):
                 singer.write_message(singer.SchemaMessage(
                     stream=common.calculate_destination_stream_name(stream),
                     schema=schema,
