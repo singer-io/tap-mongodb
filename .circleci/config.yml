@@ -37,8 +37,8 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            pyenv local 3.5.6
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox tap-tester.env
+            pyenv local 3.5.6
             python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
             pip install -U 'pip<19.2' 'setuptools<51.0.0'
