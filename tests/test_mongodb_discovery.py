@@ -1,6 +1,3 @@
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
 import os
 import datetime
 import unittest
@@ -10,24 +7,12 @@ import string
 import random
 import time
 import re
-import pprint
-import pdb
 import bson
-from functools import reduce
-from singer import utils, metadata
-from mongodb_common import drop_all_collections
 import decimal
 
+from tap_tester import connections, menagerie, runner
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 
-def get_test_connection():
-    username = os.getenv('TAP_MONGODB_USER')
-    password = os.getenv('TAP_MONGODB_PASSWORD')
-    host= os.getenv('TAP_MONGODB_HOST')
-    auth_source = os.getenv('TAP_MONGODB_DBNAME')
-    port = os.getenv('TAP_MONGODB_PORT')
-    ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
-    return conn
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
@@ -39,15 +24,18 @@ def generate_simple_coll_docs(num_docs):
     return docs
 
 class MongoDBDiscovery(unittest.TestCase):
-    def setUp(self):
-        if not all([x for x in [os.getenv('TAP_MONGODB_HOST'),
-                                    os.getenv('TAP_MONGODB_USER'),
-                                    os.getenv('TAP_MONGODB_PASSWORD'),
-                                    os.getenv('TAP_MONGODB_PORT'),
-                                    os.getenv('TAP_MONGODB_DBNAME')]]):
-            #pylint: disable=line-too-long
-            raise Exception("set TAP_MONGODB_HOST, TAP_MONGODB_USER, TAP_MONGODB_PASSWORD, TAP_MONGODB_PORT, TAP_MONGODB_DBNAME")
+    AUTOMATIC = "automatic"
+    UNSUPPORTED = "unsupported"
+    VALID_REPLICATION_KEYS = "valid-replication-keys"
+    PRIMARY_KEYS = "table-key-properties"
+    FORCED_REPLICATION_METHOD = "forced-replication-method"
+    INCREMENTAL = "INCREMENTAL"
+    FULL_TABLE = "FULL_TABLE"
+    LOG_BASED = "LOG_BASED"
 
+    def setUp(self):
+
+        ensure_environment_variables_set()
 
         with get_test_connection() as client:
             # drop all dbs/collections
@@ -157,7 +145,7 @@ class MongoDBDiscovery(unittest.TestCase):
         }
 
     def name(self):
-        return "tap_tester_mongodb_discovery"
+        return "mongodb_discovery"
 
     def tap_name(self):
         return "tap-mongodb"
