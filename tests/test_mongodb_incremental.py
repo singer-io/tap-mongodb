@@ -63,9 +63,8 @@ class MongoDBIncremental(unittest.TestCase):
             drop_all_collections(client)
 
             ############# Add simple collections #############
-            # simple_coll_1 has 50 documents
-            #client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(50))
-            client["simple_db"]["simple_coll_1"].insert_one(generate_simple_coll_docs(1)[0])
+            # simple_coll_1 has 50 documents]
+            client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(50))
 
             # simple_coll_2 has 100 documents
             client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(100))
@@ -169,8 +168,7 @@ class MongoDBIncremental(unittest.TestCase):
         # verify the tap discovered the right streams
         catalog = menagerie.get_catalog(conn_id)
         found_catalogs = menagerie.get_catalogs(conn_id)
-        import ipdb; ipdb.set_trace()
-        1+1
+
         # assert we find the correct streams
         self.assertEqual(self.expected_check_streams(),
                          {c['tap_stream_id'] for c in catalog['streams']})
