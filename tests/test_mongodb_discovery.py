@@ -240,10 +240,6 @@ class MongoDBDiscovery(unittest.TestCase):
                 # Verify primary key(s) match expectations
                 self.assertSetEqual(expected_primary_keys, actual_primary_keys)
 
-                # TODO writeup BUG does not confirm to inclusion
-                # Verify stream level inclusion is set to available
-                # self.assertEqual('available', actual_stream_inclusion)
-
                 # Verify no field-level inclusion exists
                 self.assertSetEqual(set(), actual_field_inclusions)
 
