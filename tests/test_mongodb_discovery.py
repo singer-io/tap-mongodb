@@ -1,6 +1,3 @@
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
 import os
 import datetime
 import unittest
@@ -10,24 +7,12 @@ import string
 import random
 import time
 import re
-import pprint
-import pdb
 import bson
-from functools import reduce
-from singer import utils, metadata
-from mongodb_common import drop_all_collections
 import decimal
 
+from tap_tester import connections, menagerie, runner
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 
-def get_test_connection():
-    username = os.getenv('TAP_MONGODB_USER')
-    password = os.getenv('TAP_MONGODB_PASSWORD')
-    host= os.getenv('TAP_MONGODB_HOST')
-    auth_source = os.getenv('TAP_MONGODB_DBNAME')
-    port = os.getenv('TAP_MONGODB_PORT')
-    ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
-    return conn
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
@@ -39,15 +24,18 @@ def generate_simple_coll_docs(num_docs):
     return docs
 
 class MongoDBDiscovery(unittest.TestCase):
-    def setUp(self):
-        if not all([x for x in [os.getenv('TAP_MONGODB_HOST'),
-                                    os.getenv('TAP_MONGODB_USER'),
-                                    os.getenv('TAP_MONGODB_PASSWORD'),
-                                    os.getenv('TAP_MONGODB_PORT'),
-                                    os.getenv('TAP_MONGODB_DBNAME')]]):
-            #pylint: disable=line-too-long
-            raise Exception("set TAP_MONGODB_HOST, TAP_MONGODB_USER, TAP_MONGODB_PASSWORD, TAP_MONGODB_PORT, TAP_MONGODB_DBNAME")
+    AUTOMATIC = "automatic"
+    UNSUPPORTED = "unsupported"
+    VALID_REPLICATION_KEYS = "valid-replication-keys"
+    PRIMARY_KEYS = "table-key-properties"
+    FORCED_REPLICATION_METHOD = "forced-replication-method"
+    INCREMENTAL = "INCREMENTAL"
+    FULL_TABLE = "FULL_TABLE"
+    LOG_BASED = "LOG_BASED"
 
+    def setUp(self):
+
+        ensure_environment_variables_set()
 
         with get_test_connection() as client:
             # drop all dbs/collections
@@ -119,7 +107,13 @@ class MongoDBDiscovery(unittest.TestCase):
             'special_db-hello!world?'
         }
 
-    def expected_pks(self):
+    def expected_primary_keys(self):
+        """Defaults to '_id' in discovery, standard ObjectId(), any value can be provided (TODO where?)"""
+        return {
+            stream: {'_id'}
+            for stream in self.expected_check_streams()
+        }
+    def expected_replication_keys(self):
         return {
             'simple_db-simple_coll_1': {'_id'},
             'simple_db-simple_coll_2': {'_id'},
@@ -127,9 +121,15 @@ class MongoDBDiscovery(unittest.TestCase):
             'simple_db_2-SIMPLE_COLL_1': {'_id'},
             'admin-admin_coll_1': {'_id'},
             #'simple_db-simple_view_1': {'_id'},
-            'datatype_db-datatype_coll_1': {'_id'},
+            'datatype_db-datatype_coll_1': {
+                '_id',
+                'date_field',
+                'timestamp_field',
+                '32_bit_integer_field',
+                '64_bit_integer_field',
+            },
             'special_db-hebrew_ישראל': {'_id'},
-            'special_db-hello!world?': {'_id'}
+            'special_db-hello!world?': {'_id'},
         }
 
     def expected_row_counts(self):
@@ -157,7 +157,7 @@ class MongoDBDiscovery(unittest.TestCase):
         }
 
     def name(self):
-        return "tap_tester_mongodb_discovery"
+        return "mongodb_discovery"
 
     def tap_name(self):
         return "tap-mongodb"
@@ -185,37 +185,79 @@ class MongoDBDiscovery(unittest.TestCase):
         exit_status = menagerie.get_exit_status(conn_id, check_job_name)
         menagerie.verify_check_exit_status(self, exit_status, check_job_name)
 
-        # tap discovered the right streams
+        # Verify a catalog was produced by discovery
         catalog = menagerie.get_catalog(conn_id)
+        self.assertGreater(len(catalog), 0)
 
+        # Verify stream_name entries match the expected table names
+        stream_catalogs = catalog['streams']
+        stream_names = {catalog['stream_name'] for catalog in stream_catalogs}
+        self.assertSetEqual(self.expected_table_names(), stream_names)
 
-        for stream in catalog['streams']:
-            # schema is open {} for each stream
-            self.assertEqual({'type': 'object'}, stream['schema'])
+        # Verify tap_stream_id entries follow naming convention <db_name>-<table_name>
+        stream_ids = {catalog['tap_stream_id'] for catalog in stream_catalogs}
+        self.assertSetEqual(self.expected_check_streams(), stream_ids)
 
-        # assert we find the correct streams
-        self.assertEqual(self.expected_check_streams(),
-                         {c['tap_stream_id'] for c in catalog['streams']})
-        # Verify that the table_name is in the format <collection_name> for each stream
-        self.assertEqual(self.expected_table_names(), {c['table_name'] for c in catalog['streams']})
+        # Stream level assertions
+        for stream in self.expected_check_streams():
+            with self.subTest(stream=stream):
 
-        for tap_stream_id in self.expected_check_streams():
-            found_stream = [c for c in catalog['streams'] if c['tap_stream_id'] == tap_stream_id][0]
-            stream_metadata = [x['metadata'] for x in found_stream['metadata'] if x['breadcrumb']==[]][0]
+                # gathering expectations
+                expected_primary_keys = self.expected_primary_keys()[stream]
+                expected_replication_keys = self.expected_replication_keys()[stream]
+                expected_row_count = self.expected_row_counts()[stream]
 
-            # table-key-properties metadata
-            self.assertEqual(self.expected_pks()[tap_stream_id],
-                             set(stream_metadata.get('table-key-properties')))
+                # collecting actual values...
+                stream_catalog = [catalog for catalog in stream_catalogs
+                                  if catalog["tap_stream_id"] == stream][0]
+                schema_and_metadata = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
+                stream_metadata = schema_and_metadata["metadata"]
+                empty_breadcrumb_metadata = [item for item in stream_metadata if item.get("breadcrumb") == []]
+                stream_properties = empty_breadcrumb_metadata[0]['metadata']
+                actual_primary_keys = set(stream_properties.get(self.PRIMARY_KEYS, []))
+                actual_replication_keys = set(stream_properties.get(self.VALID_REPLICATION_KEYS, []))
+                actual_replication_method = stream_properties.get(self.FORCED_REPLICATION_METHOD)
+                actual_stream_inclusion = stream_properties.get('inclusion')
+                actual_field_inclusions = set(
+                    item.get("metadata").get("inclusion")
+                    for item in stream_metadata
+                    if item.get("breadcrumb", []) != []
+                )
+                actual_fields_to_datatypes = {
+                    item['breadcrumb'][1]: item['metadata'].get('sql-datatype')
+                    for item in stream_metadata if item.get('breadcrumb') != []
+                }
 
-            # row-count metadata
-            self.assertEqual(self.expected_row_counts()[tap_stream_id],
-                             stream_metadata.get('row-count'))
+                # Verify there is only 1 top level breadcrumb in metadata
+                self.assertEqual(1, len(empty_breadcrumb_metadata))
 
-            # selected metadata is None for all streams
-            self.assertNotIn('selected', stream_metadata.keys())
+                # BUG TDL-16474 | [tap-mongodb] inconsistent discovery of valid replication keys for key-based incremental
+                #                 https://jira.talendforge.org/browse/TDL-16474
 
-            # is-view metadata is False
-            self.assertFalse(stream_metadata.get('is-view'))
+                # Verify replication key(s) match expectations
+                # self.assertSetEqual(expected_replication_keys, actual_replication_keys) # BUG_TDL-16474
 
-            # no forced-replication-method metadata
-            self.assertNotIn('forced-replication-method', stream_metadata.keys())
+                # Verify primary key(s) match expectations
+                self.assertSetEqual(expected_primary_keys, actual_primary_keys)
+
+                # Verify no field-level inclusion exists
+                self.assertSetEqual(set(), actual_field_inclusions)
+
+                # Verify row-count metadata matches expectations
+                self.assertEqual(expected_row_count, stream_properties['row-count'])
+
+                # Verify selected metadata is None for all streams
+                self.assertIsNone(stream_properties.get('selected'))
+
+                # Verify is-view metadata is False
+                self.assertFalse(stream_properties['is-view'])
+
+                # Verify no forced-replication-method is present in metadata
+                self.assertNotIn(self.FORCED_REPLICATION_METHOD, stream_properties.keys())
+
+                # Verify database-name is consistent with the tap_stream_id
+                tap_stream_id_db_prefix = stream_catalog['tap_stream_id'].split('-')[0]
+                self.assertEqual(tap_stream_id_db_prefix, stream_properties['database-name'])
+
+                # Verify schema types match expectations
+                self.assertDictEqual({'type': 'object'}, stream_catalog['schema'])

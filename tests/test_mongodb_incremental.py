@@ -19,21 +19,12 @@ import singer
 from functools import reduce
 from singer import utils, metadata
 import decimal
-from mongodb_common import drop_all_collections
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from datetime import datetime, timedelta
 
 
 RECORD_COUNT = {}
 
-def get_test_connection():
-    username = os.getenv('TAP_MONGODB_USER')
-    password = os.getenv('TAP_MONGODB_PASSWORD')
-    host= os.getenv('TAP_MONGODB_HOST')
-    auth_source = os.getenv('TAP_MONGODB_DBNAME')
-    port = os.getenv('TAP_MONGODB_PORT')
-    ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
-    return conn
 
 def z_string_generator(size=6):
     return 'z' * size
@@ -65,22 +56,14 @@ class MongoDBIncremental(unittest.TestCase):
                 'double_field']
 
     def setUp(self):
-        if not all([x for x in [os.getenv('TAP_MONGODB_HOST'),
-                                    os.getenv('TAP_MONGODB_USER'),
-                                    os.getenv('TAP_MONGODB_PASSWORD'),
-                                    os.getenv('TAP_MONGODB_PORT'),
-                                    os.getenv('TAP_MONGODB_DBNAME')]]):
-
-            #pylint: disable=line-too-long
-            raise Exception("set TAP_MONGODB_HOST, TAP_MONGODB_USER, TAP_MONGODB_PASSWORD, TAP_MONGODB_PORT, TAP_MONGODB_DBNAME")
-
+        ensure_environment_variables_set()
 
         with get_test_connection() as client:
             ############# Drop all dbs/collections #############
             drop_all_collections(client)
 
             ############# Add simple collections #############
-            # simple_coll_1 has 50 documents
+            # simple_coll_1 has 50 documents]
             client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(50))
 
             # simple_coll_2 has 100 documents

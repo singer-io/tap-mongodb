@@ -18,21 +18,12 @@ import singer
 import subprocess
 from functools import reduce
 from singer import utils, metadata
-from mongodb_common import drop_all_collections
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 import decimal
 
 
 RECORD_COUNT = {}
 
-def get_test_connection():
-    username = os.getenv('TAP_MONGODB_USER')
-    password = os.getenv('TAP_MONGODB_PASSWORD')
-    host= os.getenv('TAP_MONGODB_HOST')
-    auth_source = os.getenv('TAP_MONGODB_DBNAME')
-    port = os.getenv('TAP_MONGODB_PORT')
-    ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
-    return conn
 
 def run_mongodb_javascript(database, js):
     """
@@ -47,16 +38,7 @@ def run_mongodb_javascript(database, js):
 
 class MongoDBDatatype(unittest.TestCase):
     def setUp(self):
-
-
-        if not all([x for x in [os.getenv('TAP_MONGODB_HOST'),
-                                    os.getenv('TAP_MONGODB_USER'),
-                                    os.getenv('TAP_MONGODB_PASSWORD'),
-                                    os.getenv('TAP_MONGODB_PORT'),
-                                    os.getenv('TAP_MONGODB_DBNAME')]]):
-            #pylint: disable=line-too-long
-            raise Exception("set TAP_MONGODB_HOST, TAP_MONGODB_USER, TAP_MONGODB_PASSWORD, TAP_MONGODB_PORT, TAP_MONGODB_DBNAME")
-
+        ensure_environment_variables_set()
 
         with get_test_connection() as client:
             ############# Drop all dbs/collections #############
