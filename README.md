@@ -1,6 +1,7 @@
 # tap-mongodb
 
-This is a [Singer](https://singer.io) tap that produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md) from a MongoDB source.
+This is a [Singer](https://singer.io) tap that produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md) from a MongoDB source. 
+This plugin extends the original [implementation](https://github.com/singer-io/tap-mongodb) by introducing support for **srv** mode.
 
 ## Set up Virtual Environment
 ```
@@ -132,6 +133,91 @@ The tap will write bookmarks to stdout which can be captured and passed as an op
 
 ### Local MongoDB Setup
 If you haven't yet set up a local mongodb client, follow [these instructions](https://github.com/singer-io/tap-mongodb/blob/master/spikes/local_mongo_setup.md)
+
+## Use as a Meltano plugin
+To use this tap in Meltano, the configuration `meltano.yml` file needs to be extended with a definition of a **custom plugin** as follows:
+
+```
+plugins:
+  extractors:
+  - name: tap-mongodb
+    label: MongoDB
+    description: General purpose, document-based, distributed database
+    namespace: tap_mongodb
+    variants:
+      - name: strv
+        repo: https://github.com/strvcom/tap-mongodb
+        pip_url: git+https://github.com/strvcom/tap-mongodb.git
+        executable: tap-mongodb
+        capabilities:
+          - catalog
+          - discover
+          - state
+        settings_group_validation:
+          - [ 'host', 'user', 'password']
+        settings:
+          - name: host
+            label: Host URL
+            value: localhost
+          - name: port
+            kind: integer
+            value: 27017
+          - name: user
+          - name: password
+            kind: password
+          - name: database
+            label: Database Name
+          - name: replica_set
+          - name: ssl
+            kind: boolean
+            value: false
+            value_post_processor: stringify
+            label: SSL
+          - name: verify_mode
+            kind: boolean
+            value: true
+            value_post_processor: stringify
+            description: SSL Verify Mode
+          - name: srv
+            kind: boolean
+            value: true
+            description: Use DNS Seed List connection string
+          - name: include_schemas_in_destination_stream_name
+            kind: boolean
+            value: false
+            description: Forces the stream names to take the form `<database_name>_<collection_name>` instead of `<collection_name>`
+```
+
+To configure the plugin, there is an [official guide](https://hub.meltano.com/extractors/mongodb.html) to follow. 
+The official guide & plugin does not support **srv** mode, to configure this plugin to run in this mode, extend the configuration file with the following:
+
+```
+plugins:
+  extractors:
+  - name: tap-mongodb
+    ...
+    config:
+      host: <host ip address>
+      user: <username>
+      srv: true
+```
+
+The passwords should be set as described in the original guide.
+
+**Note**: An extractor configuration needs to be defined for this plugin to work. The configuration is described in the [official guide](https://meltano.com/docs/getting-started.html#add-an-extractor-to-pull-data-from-a-source).
+A simple example of additional configuration is the following extension of configuration file:
+
+```
+plugins:
+  extractors:
+  - name: tap-mongodb
+    ...
+    config:
+      ...
+    metadata:
+      '*':
+        replication-method: FULL_TABLE
+```
 
 ---
 
