@@ -3,27 +3,23 @@ import copy
 import json
 import ssl
 import sys
-import time
-import pymongo
-from bson import timestamp
 
+import pymongo
 import singer
 from singer import metadata, metrics, utils
 
 import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
-import tap_mongodb.sync_strategies.oplog as oplog
 import tap_mongodb.sync_strategies.incremental as incremental
-
+import tap_mongodb.sync_strategies.oplog as oplog
 
 LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = [
     'host',
-    'port',
     'user',
     'password',
-    'database'
+    'use_dns_seed_list'
 ]
 
 IGNORE_DBS = ['system', 'local', 'config']
@@ -103,17 +99,20 @@ def get_roles(client, config):
                         roles.append(sub_role)
     return roles
 
+
 def get_databases(client, config):
     roles = get_roles(client, config)
     LOGGER.info('Roles: %s', roles)
 
-    can_read_all = len([r for r in roles if r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES]) > 0
+    can_read_all = any([r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES for r in roles])
 
-    if can_read_all:
+    # TODO - adjusted condition to cover the case with no roles
+    if can_read_all or len(roles) == 0:
         db_names = [d for d in client.list_database_names() if d not in IGNORE_DBS]
     else:
         db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
     db_names = list(set(db_names))  # Make sure each db is only in the list once
+
     LOGGER.info('Datbases: %s', db_names)
     return db_names
 
@@ -179,7 +178,7 @@ def do_discover(client, config):
                         db_name, collection_name)
             streams.append(produce_collection_schema(collection))
 
-    json.dump({'streams' : streams}, sys.stdout, indent=2)
+    json.dump({'streams': streams}, sys.stdout, indent=2)
 
 
 def is_stream_selected(stream):
@@ -191,7 +190,6 @@ def is_stream_selected(stream):
 
 
 def get_streams_to_sync(streams, state):
-
     # get selected streams
     selected_streams = [s for s in streams if is_stream_selected(s)]
     # prioritize streams that have not been processed
@@ -214,7 +212,7 @@ def get_streams_to_sync(streams, state):
             lambda s: s['tap_stream_id'] == currently_syncing,
             ordered_streams))
         non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id']
-                                                    != currently_syncing,
+                                                              != currently_syncing,
                                                     ordered_streams))
 
         streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
@@ -229,6 +227,7 @@ def write_schema_message(stream):
         stream=common.calculate_destination_stream_name(stream),
         schema=stream['schema'],
         key_properties=['_id']))
+
 
 def load_stream_projection(stream):
     md_map = metadata.to_map(stream['metadata'])
@@ -246,9 +245,10 @@ def load_stream_projection(stream):
     if stream_projection and stream_projection.get('_id') == 0:
         raise common.InvalidProjectionException(
             "Projection blacklists key property id for collection {}" \
-            .format(stream['tap_stream_id']))
+                .format(stream['tap_stream_id']))
 
     return stream_projection
+
 
 def clear_state_on_replication_change(stream, state):
     md_map = metadata.to_map(stream['metadata'])
@@ -276,6 +276,7 @@ def clear_state_on_replication_change(stream, state):
 
     return state
 
+
 def sync_stream(client, stream, state):
     tap_stream_id = stream['tap_stream_id']
 
@@ -283,7 +284,6 @@ def sync_stream(client, stream, state):
     common.TIMES[tap_stream_id] = 0
     common.SCHEMA_COUNT[tap_stream_id] = 0
     common.SCHEMA_TIMES[tap_stream_id] = 0
-
 
     md_map = metadata.to_map(stream['metadata'])
     replication_method = metadata.get(md_map, (), 'replication-method')
@@ -358,20 +358,39 @@ def main_impl():
     verify_mode = config.get('verify_mode', 'true') == 'true'
     use_ssl = config.get('ssl') == 'true'
 
-    connection_params = {"host": config['host'],
-                         "port": int(config['port']),
-                         "username": config.get('user', None),
-                         "password": config.get('password', None),
-                         "authSource": config['database'],
-                         "ssl": use_ssl,
-                         "replicaset": config.get('replica_set', None),
-                         "readPreference": 'secondaryPreferred'}
+    # Use DNS Seed List
+    use_dns_seed_list = config.get('use_dns_seed_list') == 'true'
 
-    # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
-    if not verify_mode and use_ssl:
-        connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+    # create the connection
+    if use_dns_seed_list:
+        connection_params = {
+            "host": config['host'],
+            "port": int(config.get('port', 27017)),
+            "username": config.get('user', None),
+            "password": config.get('password', None),
+            "authSource": config.get('database', None),
+            "ssl": use_ssl,
+            "replicaset": config.get('replica_set', None),
+            "readPreference": 'secondaryPreferred'
+        }
 
-    client = pymongo.MongoClient(**connection_params)
+        # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
+        if not verify_mode and use_ssl:
+            connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+
+        client = pymongo.MongoClient(**connection_params)
+    else:
+        # TODO - does not take all parameters into account -> just our case
+        if 'user' in config:
+            # resolve user's credentials
+            if 'password' in config:
+                credentials = '{}:{}'.format(config['user'], config['password'])
+            else:
+                credentials = config['user']
+            connection_url = "mongodb+srv://{}@{}".format(credentials, config['host'])
+        else:
+            connection_url = "mongodb+srv://{}".format(config['host'])
+        client = pymongo.MongoClient(connection_url)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
@@ -385,6 +404,7 @@ def main_impl():
     elif args.catalog:
         state = args.state or {}
         do_sync(client, args.catalog.to_dict(), state)
+
 
 def main():
     try:
