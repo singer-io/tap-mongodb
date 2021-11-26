@@ -20,17 +20,17 @@ Create json file called `config.json`, with the following contents:
 {
   "password": "<password>",
   "user": "<username>",
-  "host": "<host ip address>",
-  "port": "<port>",
-  "database": "<database name>"
+  "host": "<host ip address>"
 }
 ```
 The folowing parameters are optional for your config file:
 
 | Name | Type | Description |
 | -----|------|------------ |
-| `replica_set` | string | name of replica set |
+| `port` | integer | port number (default is 27017) |
+| `database` | string | name of the database |
 |`ssl` | Boolean | can be set to true to connect using ssl |
+|`srv` | Boolean | use DNS Seed List connection string - [link](https://docs.mongodb.com/manual/reference/connection-string/) |
 | `include_schema_in_destination_stream_name` | Boolean | forces the stream names to take the form `<database_name>_<collection_name>` instead of `<collection_name>`|
 
 All of the above attributes are required by the tap to connect to your mongo instance. 

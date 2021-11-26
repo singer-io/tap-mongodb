@@ -18,8 +18,7 @@ LOGGER = singer.get_logger()
 REQUIRED_CONFIG_KEYS = [
     'host',
     'user',
-    'password',
-    'use_dns_seed_list'
+    'password'
 ]
 
 IGNORE_DBS = ['system', 'local', 'config']
@@ -101,18 +100,21 @@ def get_roles(client, config):
 
 
 def get_databases(client, config):
-    roles = get_roles(client, config)
-    LOGGER.info('Roles: %s', roles)
-
-    can_read_all = any([r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES for r in roles])
-
-    # TODO - adjusted condition to cover the case with no roles
-    if can_read_all or len(roles) == 0:
+    if 'database' not in config:
+        # handle the case when no database is provided - read all databases
+        LOGGER.info('No Roles loaded')
         db_names = [d for d in client.list_database_names() if d not in IGNORE_DBS]
     else:
-        db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
-    db_names = list(set(db_names))  # Make sure each db is only in the list once
+        # take roles into consideration
+        roles = get_roles(client, config)
+        LOGGER.info('Roles: %s', roles)
+        can_read_all = any([r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES for r in roles])
+        if can_read_all:
+            db_names = [d for d in client.list_database_names() if d not in IGNORE_DBS]
+        else:
+            db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
 
+    db_names = list(set(db_names))  # Make sure each db is only in the list once
     LOGGER.info('Datbases: %s', db_names)
     return db_names
 
@@ -359,10 +361,10 @@ def main_impl():
     use_ssl = config.get('ssl') == 'true'
 
     # Use DNS Seed List
-    use_dns_seed_list = config.get('use_dns_seed_list') == 'true'
+    srv = config.get('srv') == 'true'
 
     # create the connection
-    if use_dns_seed_list:
+    if srv:
         connection_params = {
             "host": config['host'],
             "port": int(config.get('port', 27017)),
@@ -381,15 +383,7 @@ def main_impl():
         client = pymongo.MongoClient(**connection_params)
     else:
         # TODO - does not take all parameters into account -> just our case
-        if 'user' in config:
-            # resolve user's credentials
-            if 'password' in config:
-                credentials = '{}:{}'.format(config['user'], config['password'])
-            else:
-                credentials = config['user']
-            connection_url = "mongodb+srv://{}@{}".format(credentials, config['host'])
-        else:
-            connection_url = "mongodb+srv://{}".format(config['host'])
+        connection_url = "mongodb+srv://{}:{}@{}".format(config['user'], config['password'], config['host'])
         client = pymongo.MongoClient(connection_url)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
