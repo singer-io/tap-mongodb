@@ -94,6 +94,12 @@ class MongoDBDiscovery(unittest.TestCase):
             }
             client["datatype_db"]["datatype_coll_1"].insert_one(datatype_doc)
 
+            client["datatype_db"]["datatype_coll_2"].insert_one(datatype_doc)
+            client["datatype_db"]["datatype_coll_2"].create_index([("date_field", pymongo.ASCENDING)])
+            client["datatype_db"]["datatype_coll_2"].create_index([("timestamp_field", pymongo.ASCENDING)])
+            client["datatype_db"]["datatype_coll_2"].create_index([("32_bit_integer_field", pymongo.ASCENDING)])
+            client["datatype_db"]["datatype_coll_2"].create_index([("64_bit_integer_field", pymongo.ASCENDING)])
+
     def expected_check_streams(self):
         return {
             'simple_db-simple_coll_1',
@@ -103,6 +109,7 @@ class MongoDBDiscovery(unittest.TestCase):
             'admin-admin_coll_1',
             #'simple_db-simple_view_1',
             'datatype_db-datatype_coll_1',
+            'datatype_db-datatype_coll_2',
             'special_db-hebrew_ישראל',
             'special_db-hello!world?'
         }
@@ -123,6 +130,9 @@ class MongoDBDiscovery(unittest.TestCase):
             #'simple_db-simple_view_1': {'_id'},
             'datatype_db-datatype_coll_1': {
                 '_id',
+            },
+            'datatype_db-datatype_coll_2': {
+                '_id',
                 'date_field',
                 'timestamp_field',
                 '32_bit_integer_field',
@@ -141,6 +151,7 @@ class MongoDBDiscovery(unittest.TestCase):
             'admin-admin_coll_1': 50,
             #'simple_db-simple_view_1': 50,
             'datatype_db-datatype_coll_1': 1,
+            'datatype_db-datatype_coll_2': 1,
             'special_db-hebrew_ישראל': 50,
             'special_db-hello!world?': 50
         }
@@ -152,6 +163,7 @@ class MongoDBDiscovery(unittest.TestCase):
             'SIMPLE_COLL_1',
             'admin_coll_1',
             'datatype_coll_1',
+            'datatype_coll_2',
             'hebrew_ישראל',
             'hello!world?'
         }
@@ -231,11 +243,8 @@ class MongoDBDiscovery(unittest.TestCase):
                 # Verify there is only 1 top level breadcrumb in metadata
                 self.assertEqual(1, len(empty_breadcrumb_metadata))
 
-                # BUG TDL-16474 | [tap-mongodb] inconsistent discovery of valid replication keys for key-based incremental
-                #                 https://jira.talendforge.org/browse/TDL-16474
-
                 # Verify replication key(s) match expectations
-                # self.assertSetEqual(expected_replication_keys, actual_replication_keys) # BUG_TDL-16474
+                self.assertSetEqual(expected_replication_keys, actual_replication_keys)
 
                 # Verify primary key(s) match expectations
                 self.assertSetEqual(expected_primary_keys, actual_primary_keys)
