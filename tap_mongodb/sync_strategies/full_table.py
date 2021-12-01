@@ -111,10 +111,12 @@ def sync_collection(client, stream, state, projection):
 
             schema_build_start_time = time.time()
             if common.row_to_schema(schema, row):
-                singer.write_message(singer.SchemaMessage(
-                    stream=common.calculate_destination_stream_name(stream),
-                    schema=schema,
-                    key_properties=['_id']))
+                if "schema" not in stream:
+
+                    singer.write_message(singer.SchemaMessage(
+                        stream=common.calculate_destination_stream_name(stream),
+                        schema=schema,
+                        key_properties=['_id']))
                 common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
             common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
 
