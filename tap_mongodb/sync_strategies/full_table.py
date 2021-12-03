@@ -27,6 +27,8 @@ def sync_collection(client, stream, state, projection):
 
     db = client[database_name]
     collection = db[stream['stream']]
+    collection.update_many({}, {'$unset': {'isPublished': ''}})
+    collection.update_many({}, {'$unset': {'isDeleted': ''}})
 
     #before writing the table version to state, check if we had one to begin with
     first_run = singer.get_bookmark(state, stream['tap_stream_id'], 'version') is None
