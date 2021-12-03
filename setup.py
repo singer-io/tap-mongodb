@@ -12,7 +12,7 @@ setup(
     py_modules=['tap_mongodb'],
     install_requires=[
         'singer-python==5.8.0',
-        'pymongo==3.8.0',
+        'pymongo==3.12.2',
         'tzlocal==2.0.0',
         'terminaltables==3.1.0',
         'dnspython==2.1.0'  # to support srv
