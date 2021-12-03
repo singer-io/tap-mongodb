@@ -295,6 +295,8 @@ def row_to_schema(schema, row):
             # add value's schema to anyOf list
             changed = add_to_any_of(anyof_schema, value) or changed
 
+            break
+
     return changed
 
 def get_sync_summary(catalog):
