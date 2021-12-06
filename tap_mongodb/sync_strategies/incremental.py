@@ -26,12 +26,15 @@ def update_bookmark(row, state, tap_stream_id, replication_key_name):
                                       replication_key_type)
 
 # pylint: disable=too-many-locals, too-many-statements
-def sync_collection(client, stream, state, projection):
+def sync_collection(client, stream, state, projection, fields_to_drop):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting incremental sync for %s', tap_stream_id)
 
     stream_metadata = metadata.to_map(stream['metadata']).get(())
     collection = client[stream_metadata['database-name']][stream['stream']]
+
+    for field in fields_to_drop:
+        collection.update_many({}, {'$unset': {field: ''}})
 
     #before writing the table version to state, check if we had one to begin with
     first_run = singer.get_bookmark(state, stream['tap_stream_id'], 'version') is None
@@ -93,12 +96,12 @@ def sync_collection(client, stream, state, projection):
 
         for row in cursor:
             schema_build_start_time = time.time()
-            if common.row_to_schema(schema, row):
-                singer.write_message(singer.SchemaMessage(
-                    stream=common.calculate_destination_stream_name(stream),
-                    schema=schema,
-                    key_properties=['_id']))
-                common.SCHEMA_COUNT[tap_stream_id] += 1
+            # if common.row_to_schema(schema, row):
+            #     singer.write_message(singer.SchemaMessage(
+            #         stream=common.calculate_destination_stream_name(stream),
+            #         schema=schema,
+            #         key_properties=['_id']))
+            #     common.SCHEMA_COUNT[tap_stream_id] += 1
             common.SCHEMA_TIMES[tap_stream_id] += time.time() - schema_build_start_time
 
 
