@@ -17,8 +17,10 @@ def get_max_id_value(collection):
     return None
 
 
+
+
 # pylint: disable=too-many-locals,invalid-name,too-many-statements
-def sync_collection(client, stream, state, projection):
+def sync_collection(client, stream, state, projection, fields_to_drop):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting full table sync for %s', tap_stream_id)
 
@@ -27,8 +29,9 @@ def sync_collection(client, stream, state, projection):
 
     db = client[database_name]
     collection = db[stream['stream']]
-    collection.update_many({}, {'$unset': {'isPublished': ''}})
-    collection.update_many({}, {'$unset': {'isDeleted': ''}})
+    
+    for field in fields_to_drop:
+        collection.update_many({}, {'$unset': {field: ''}})
 
     #before writing the table version to state, check if we had one to begin with
     first_run = singer.get_bookmark(state, stream['tap_stream_id'], 'version') is None

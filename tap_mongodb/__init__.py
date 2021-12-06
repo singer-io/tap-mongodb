@@ -279,7 +279,7 @@ def clear_state_on_replication_change(stream, state):
     return state
 
 
-def sync_stream(client, stream, state):
+def sync_stream(client, stream, state, fields_to_drop):
     tap_stream_id = stream['tap_stream_id']
 
     common.COUNTS[tap_stream_id] = 0
@@ -328,7 +328,7 @@ def sync_stream(client, stream, state):
             oplog.sync_collection(client, stream, state, stream_projection)
 
         elif replication_method == 'FULL_TABLE':
-            full_table.sync_collection(client, stream, state, stream_projection)
+            full_table.sync_collection(client, stream, state, stream_projection, fields_to_drop)
 
         elif replication_method == 'INCREMENTAL':
             incremental.sync_collection(client, stream, state, stream_projection)
@@ -342,12 +342,12 @@ def sync_stream(client, stream, state):
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
 
-def do_sync(client, catalog, state):
+def do_sync(client, catalog, state, fields_to_drop):
     all_streams = catalog['streams']
     streams_to_sync = get_streams_to_sync(all_streams, state)
 
     for stream in streams_to_sync:
-        sync_stream(client, stream, state)
+        sync_stream(client, stream, state, fields_to_drop)
 
     LOGGER.info(common.get_sync_summary(catalog))
 
@@ -362,6 +362,10 @@ def main_impl():
 
     # Use DNS Seed List
     srv = config.get('srv') == 'true'
+
+    # if no dropping fields specified, create empty list
+    if not 'fields_to_drop' in list(config.keys()):
+        config['fields_to_drop'] = []
 
     # create the connection
     if srv:
@@ -397,7 +401,7 @@ def main_impl():
         do_discover(client, config)
     elif args.catalog:
         state = args.state or {}
-        do_sync(client, args.catalog.to_dict(), state)
+        do_sync(client, args.catalog.to_dict(), state, fields_to_drop)
 
 
 def main():
