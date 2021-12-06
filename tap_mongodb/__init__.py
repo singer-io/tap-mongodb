@@ -401,7 +401,7 @@ def main_impl():
         do_discover(client, config)
     elif args.catalog:
         state = args.state or {}
-        do_sync(client, args.catalog.to_dict(), state, fields_to_drop)
+        do_sync(client, args.catalog.to_dict(), state, config['fields_to_drop'])
 
 
 def main():
