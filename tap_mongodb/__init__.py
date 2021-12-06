@@ -323,7 +323,7 @@ def sync_stream(client, stream, state, fields_to_drop):
                     collection_oplog_ts = oplog.get_latest_ts(client)
                     oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
-                full_table.sync_collection(client, stream, state, stream_projection)
+                full_table.sync_collection(client, stream, state, stream_projection, fields_to_drop)
 
             oplog.sync_collection(client, stream, state, stream_projection)
 
@@ -331,7 +331,7 @@ def sync_stream(client, stream, state, fields_to_drop):
             full_table.sync_collection(client, stream, state, stream_projection, fields_to_drop)
 
         elif replication_method == 'INCREMENTAL':
-            incremental.sync_collection(client, stream, state, stream_projection)
+            incremental.sync_collection(client, stream, state, stream_projection, fields_to_drop)
         else:
             raise Exception(
                 "only FULL_TABLE, LOG_BASED, and INCREMENTAL replication \
