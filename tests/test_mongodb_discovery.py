@@ -192,7 +192,8 @@ class MongoDBDiscovery(unittest.TestCase):
 
         # run in check mode
         check_job_name = runner.run_check_mode(self, conn_id)
-
+        import ipdb; ipdb.set_trace()
+        1+1
         # check exit codes
         exit_status = menagerie.get_exit_status(conn_id, check_job_name)
         menagerie.verify_check_exit_status(self, exit_status, check_job_name)

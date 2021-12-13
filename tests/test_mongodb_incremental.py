@@ -28,7 +28,8 @@ def generate_simple_coll_docs(num_docs):
                      "date_field": start_datetime,
                      "double_field": int_value+1.00001,
                      "timestamp_field": bson.timestamp.Timestamp(int_value+1565897157, 1),
-                     "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282{:03d}'.format(int_value)),
+                     "uuid_field": bson.Binary.from_uuid(uuid.uuid4()),
+                    # "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282{:03d}'.format(int_value)),
                      "64_bit_int_field": 34359738368 + int_value
                      })
     return docs
@@ -47,9 +48,10 @@ class MongoDBIncremental(TestCase):
         ensure_environment_variables_set()
 
         with get_test_connection() as client:
+            
             ############# Drop all dbs/collections #############
             drop_all_collections(client)
-
+            
             ############# Add simple collections #############
             # simple_coll_1 has 50 documents]
             client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(50))
@@ -65,13 +67,13 @@ class MongoDBIncremental(TestCase):
             client["simple_db"]["simple_coll_2"].create_index([("date_field", pymongo.ASCENDING)])
             client["simple_db"]["simple_coll_3"].create_index([("date_field", pymongo.ASCENDING)])
 
+            # TODO : The below code does not generate collections which contains only 1 data type, what is the purpose of createing collections specific to datatypes
             # Add simple_coll per key type
             for key_name in self.key_names():
                 client["simple_db"]["simple_coll_{}".format(key_name)].insert_many(generate_simple_coll_docs(50))
 
                 # add index on field
                 client["simple_db"]["simple_coll_{}".format(key_name)].create_index([(key_name, pymongo.ASCENDING)])
-
 
     def expected_check_streams(self):
         return {
@@ -147,7 +149,6 @@ class MongoDBIncremental(TestCase):
                 'user' : os.getenv('TAP_MONGODB_USER'),
                 'database' : os.getenv('TAP_MONGODB_DBNAME')
         }
-
 
     def test_run(self):
 
@@ -301,15 +302,27 @@ class MongoDBIncremental(TestCase):
 
         # Perform data manipulations
         with get_test_connection() as client:
+            import ipdb; ipdb.set_trace()
+            1+1
+            # update 1 document in each of the collection
+            id_coll_1 = client["simple_db"]["simple_coll_1"].find_one()
+            client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": id_coll_1["_id"]}, {"$set": {"string_field": "update_test_1"}})
 
+            id_coll_2 = client["simple_db"]["simple_coll_2"].find_one()
+            client["simple_db"]["simple_coll_2"].find_one_and_update({"_id": id_coll_2["_id"]}, {"$set": {"string_field": "update_test_2"}})
+
+            for key_name in self.key_names():
+                id_coll = client["simple_db"]["simple_coll_{}".format(key_name)].find_one()
+                client["simple_db"]["simple_coll_{}".format(key_name)].find_one_and_update({"_id": id_coll["_id"]}, {"$set": {"string_field": "update_test_generic"}})
+                
             # insert two documents with date_field > bookmark for next sync
             client["simple_db"]["simple_coll_1"].insert_one({
                 "int_field": 50,
                 "string_field": z_string_generator(),
                 "date_field": datetime(2018, 9, 13, 19, 29, 14, 578000),
                 "double_field": 51.001,
-                "timestamp_field": bson.timestamp.Timestamp(1565897157+50,1),
-                "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282050'),
+                "timestamp_field": bson.timestamp.Timestamp(1565897157+50, 1),
+                "uuid_field": bson.Binary.from_uuid(uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282050')),
                 "64_bit_int_field": 34359738368 + 50
             })
             client["simple_db"]["simple_coll_1"].insert_one({
@@ -317,8 +330,8 @@ class MongoDBIncremental(TestCase):
                 "string_field": z_string_generator(),
                 "date_field": datetime(2018, 9, 18, 19, 29, 14, 578000),
                 "double_field": 52.001,
-                "timestamp_field": bson.timestamp.Timestamp(1565897157+51,1),
-                "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282051'),
+                "timestamp_field": bson.timestamp.Timestamp(1565897157+51, 1),
+                "uuid_field":bson.Binary.from_uuid(uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282051')),
                 "64_bit_int_field": 34359738368 + 51
             })
 
@@ -327,8 +340,8 @@ class MongoDBIncremental(TestCase):
                 "string_field": z_string_generator(),
                 "date_field": datetime(2019, 5, 21, 19, 29, 14, 578000),
                 "double_field": 101.001,
-                "timestamp_field": bson.timestamp.Timestamp(1565897157+100,1),
-                "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282100'),
+                "timestamp_field": bson.timestamp.Timestamp(1565897157+100, 1),
+                "uuid_field": bson.Binary.from_uuid(uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282100')),
                 "64_bit_int_field": 34359738368 + 100
             })
             client["simple_db"]["simple_coll_2"].insert_one({
@@ -336,8 +349,8 @@ class MongoDBIncremental(TestCase):
                 "string_field": z_string_generator(),
                 "date_field": datetime(2019, 5, 26, 19, 29, 14, 578000),
                 "double_field": 102.001,
-                "timestamp_field": bson.timestamp.Timestamp(1565897157+101,1),
-                "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282101'),
+                "timestamp_field": bson.timestamp.Timestamp(1565897157+101, 1),
+                "uuid_field": bson.Binary.from_uuid(uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282101')),
                 "64_bit_int_field": 34359738368 + 101
             })
 
@@ -347,8 +360,8 @@ class MongoDBIncremental(TestCase):
                     "string_field": z_string_generator(50),
                     "date_field": datetime(2018, 9, 13, 19, 29, 15, 578000),
                     "double_field": 51.001,
-                    "timestamp_field": bson.timestamp.Timestamp(1565897157+50,1),
-                    "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282050'),
+                    "timestamp_field": bson.timestamp.Timestamp(1565897157+50, 1),
+                    "uuid_field": bson.Binary.from_uuid(uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282050')),
                     "64_bit_int_field": 34359738368 + 50
                 })
                 client["simple_db"]["simple_coll_{}".format(key_name)].insert_one({
@@ -356,8 +369,8 @@ class MongoDBIncremental(TestCase):
                     "string_field": z_string_generator(51),
                     "date_field": datetime(2018, 9, 18, 19, 29, 16, 578000),
                     "double_field": 52.001,
-                    "timestamp_field": bson.timestamp.Timestamp(1565897157+51,1),
-                    "uuid_field": uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282051'),
+                    "timestamp_field": bson.timestamp.Timestamp(1565897157+51, 1),
+                    "uuid_field": bson.Binary.from_uuid(uuid.UUID('3e139ff5-d622-45c6-bf9e-1dfec7282051')),
                     "64_bit_int_field": 34359738368 + 51
                 })
 
@@ -383,46 +396,46 @@ class MongoDBIncremental(TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # Verify that we got 3 records for each stream (2 because of the new records, 1 because
-        # of gte)
-        for k,v in record_count_by_stream.items():
-            self.assertEqual(3, v)
+        # # Verify that we got 3 records for each stream (2 because of the new records, 1 because
+        # # of gte)
+        # for k,v in record_count_by_stream.items():
+        #     self.assertEqual(3, v)
 
-        # Verify that the _id of the records sent are the same set as the
-        # _ids of the documents changed
-        for stream_name in self.expected_sync_streams():
-            actual = set([x['data']['int_field'] for x in records_by_stream[stream_name]])
-            self.assertEqual(self.expected_incremental_int_fields()[stream_name], actual)
+        # # Verify that the _id of the records sent are the same set as the
+        # # _ids of the documents changed
+        # for stream_name in self.expected_sync_streams():
+        #     actual = set([x['data']['int_field'] for x in records_by_stream[stream_name]])
+        #     self.assertEqual(self.expected_incremental_int_fields()[stream_name], actual)
 
-        # -----------------------------------
-        # ------------ Third Sync -----------
-        # -----------------------------------
-        # Change the replication method for simple_coll_1
-        # Change the replication key for simple_coll_2
-        # Make sure both do full resync
-        for stream_catalog in found_catalogs:
-            annotated_schema = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
-            additional_md = []
-            if stream_catalog['tap_stream_id'] == 'simple_db-simple_coll_1':
-                additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'LOG_BASED'}}]
-            elif stream_catalog['tap_stream_id'] == 'simple_db-simple_coll_2':
-                additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'INCREMENTAL',
-                                                                    'replication-key': 'timestamp_field'}}]
-            else:
-                additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'INCREMENTAL',
-                                                                    'replication-key': stream_catalog['stream_name'].replace('simple_coll_', '')}}]
+        # # -----------------------------------
+        # # ------------ Third Sync -----------
+        # # -----------------------------------
+        # # Change the replication method for simple_coll_1
+        # # Change the replication key for simple_coll_2
+        # # Make sure both do full resync
+        # for stream_catalog in found_catalogs:
+        #     annotated_schema = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
+        #     additional_md = []
+        #     if stream_catalog['tap_stream_id'] == 'simple_db-simple_coll_1':
+        #         additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'LOG_BASED'}}]
+        #     elif stream_catalog['tap_stream_id'] == 'simple_db-simple_coll_2':
+        #         additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'INCREMENTAL',
+        #                                                             'replication-key': 'timestamp_field'}}]
+        #     else:
+        #         additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'INCREMENTAL',
+        #                                                             'replication-key': stream_catalog['stream_name'].replace('simple_coll_', '')}}]
 
-            selected_metadata = connections.select_catalog_and_fields_via_metadata(conn_id,
-                                                                                   stream_catalog,
-                                                                                   annotated_schema,
-                                                                                   additional_md)
-        # Run sync
-        sync_job_name = runner.run_sync_mode(self, conn_id)
-        exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
-        menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
-        record_count_by_stream = runner.examine_target_output_file(self,
-                                                                   conn_id,
-                                                                   self.expected_sync_streams(),
-                                                                   self.expected_pks())
-        for tap_stream_id in self.expected_sync_streams():
-            self.assertGreaterEqual(record_count_by_stream[tap_stream_id],self.expected_last_sync_row_counts()[tap_stream_id])
+        #     selected_metadata = connections.select_catalog_and_fields_via_metadata(conn_id,
+        #                                                                            stream_catalog,
+        #                                                                            annotated_schema,
+        #                                                                            additional_md)
+        # # Run sync
+        # sync_job_name = runner.run_sync_mode(self, conn_id)
+        # exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
+        # menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
+        # record_count_by_stream = runner.examine_target_output_file(self,
+        #                                                            conn_id,
+        #                                                            self.expected_sync_streams(),
+        #                                                            self.expected_pks())
+        # for tap_stream_id in self.expected_sync_streams():
+        #     self.assertGreaterEqual(record_count_by_stream[tap_stream_id],self.expected_last_sync_row_counts()[tap_stream_id])
