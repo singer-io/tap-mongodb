@@ -1,30 +1,18 @@
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
 import os
-import datetime
-import unittest
-import datetime
-import pymongo
-import string
-import random
-import time
-import re
-import pprint
-import pdb
-import bson
-from bson import ObjectId
 import uuid
-import singer
-from functools import reduce
-from singer import utils, metadata
 import decimal
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+import string
+import bson
 from datetime import datetime, timedelta
+from unittest import TestCase
 
+import pymongo
+
+from tap_tester import connections, menagerie, runner
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 
 RECORD_COUNT = {}
-
+VALID_REPLICATION_TYPES = {'datetime','Int64','float','int','str','Timestamp','UUID',}
 
 def z_string_generator(size=6):
     return 'z' * size
@@ -45,7 +33,7 @@ def generate_simple_coll_docs(num_docs):
                      })
     return docs
 
-class MongoDBIncremental(unittest.TestCase):
+class MongoDBIncremental(TestCase):
     def key_names(self):
         return ['int_field',
                 'string_field',
@@ -69,9 +57,13 @@ class MongoDBIncremental(unittest.TestCase):
             # simple_coll_2 has 100 documents
             client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(100))
 
+            # simple_coll_3 has 100 documents
+            client["simple_db"]["simple_coll_3"].insert_many(generate_simple_coll_docs(100))
+
             ############# Add Index on date_field ############
             client["simple_db"]["simple_coll_1"].create_index([("date_field", pymongo.ASCENDING)])
             client["simple_db"]["simple_coll_2"].create_index([("date_field", pymongo.ASCENDING)])
+            client["simple_db"]["simple_coll_3"].create_index([("date_field", pymongo.ASCENDING)])
 
             # Add simple_coll per key type
             for key_name in self.key_names():
@@ -85,6 +77,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_db-simple_coll_1',
             'simple_db-simple_coll_2',
+            'simple_db-simple_coll_3',
             *['simple_db-simple_coll_{}'.format(k) for k in self.key_names()]
         }
 
@@ -92,6 +85,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_coll_1': {'_id'},
             'simple_coll_2': {'_id'},
+            'simple_coll_3': {'_id'},
             **{"simple_coll_{}".format(k): {'_id'} for k in self.key_names()}
         }
 
@@ -99,6 +93,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_coll_1': {'_id', 'date_field'},
             'simple_coll_2': {'_id', 'date_field'},
+            'simple_coll_3': {'_id', 'date_field'},
             **{"simple_coll_{}".format(k): {'_id', k} for k in self.key_names()}
         }
 
@@ -106,6 +101,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_coll_1': 50,
             'simple_coll_2': 100,
+            'simple_coll_3': 100,
             **{"simple_coll_{}".format(k): 50 for k in self.key_names()}
         }
 
@@ -113,6 +109,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_coll_1': 50,
             'simple_coll_2': 100,
+            'simple_coll_3': 100,
             **{"simple_coll_{}".format(k): 1 for k in self.key_names()}
         }
 
@@ -120,6 +117,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_coll_1': {49, 50, 51},
             'simple_coll_2': {99, 100, 101},
+            'simple_coll_3': {'TODO'},
             **{"simple_coll_{}".format(k): {49, 50, 51} for k in self.key_names()}
         }
 
@@ -127,6 +125,7 @@ class MongoDBIncremental(unittest.TestCase):
         return {
             'simple_coll_1',
             'simple_coll_2',
+            'simple_coll_3',
             *['simple_coll_{}'.format(k) for k in self.key_names()]
         }
 
@@ -168,31 +167,39 @@ class MongoDBIncremental(unittest.TestCase):
         # verify the tap discovered the right streams
         catalog = menagerie.get_catalog(conn_id)
         found_catalogs = menagerie.get_catalogs(conn_id)
+        found_streams = {entry['tap_stream_id'] for entry in catalog['streams']}
+        self.assertSetEqual(self.expected_check_streams(), found_streams)
 
-        # assert we find the correct streams
-        self.assertEqual(self.expected_check_streams(),
-                         {c['tap_stream_id'] for c in catalog['streams']})
-
-
+        # verify the tap discovered stream metadata is consistent with the source database
         for tap_stream_id in self.expected_check_streams():
-            found_stream = [c for c in catalog['streams'] if c['tap_stream_id'] == tap_stream_id][0]
-            stream_metadata = [x['metadata'] for x in found_stream['metadata'] if x['breadcrumb']==[]][0]
+            with self.subTest(stream=tap_stream_id):
 
-            # assert that the pks are correct
-            self.assertEqual(self.expected_pks()[found_stream['stream']],
-                             set(stream_metadata.get('table-key-properties')))
+                # gather expectations
+                stream = tap_stream_id.split('-')[1]
+                expected_primary_key = self.expected_pks()[stream]
+                expected_row_count = self.expected_row_counts()[stream]
+                expected_replication_keys = self.expected_valid_replication_keys()[stream]
 
-            # assert that the row counts are correct
-            self.assertEqual(self.expected_row_counts()[found_stream['stream']],
-                             stream_metadata.get('row-count'))
+                # gather results
+                found_stream = [entry for entry in catalog['streams'] if entry['tap_stream_id'] == tap_stream_id][0]
+                stream_metadata = [entry['metadata'] for entry in found_stream['metadata'] if entry['breadcrumb']==[]][0]
+                primary_key = set(stream_metadata.get('table-key-properties'))
+                row_count = stream_metadata.get('row-count')
+                replication_key = set(stream_metadata.get('valid-replication-keys'))
 
-            # assert that valid replication keys are correct
-            self.assertEqual(self.expected_valid_replication_keys()[found_stream['stream']],
-                             set(stream_metadata.get('valid-replication-keys')))
+                # assert that the pks are correct
+                self.assertSetEqual(expected_primary_key, primary_key)
+
+                # assert that the row counts are correct
+                self.assertEqual(expected_row_count, row_count)
+
+                # assert that valid replication keys are correct
+                self.assertSetEqual(replication_key, expected_replication_keys)
 
         #  -----------------------------------
         # ----------- Initial Sync ---------
         #  -----------------------------------
+
         # Select simple_coll_1 and simple_coll_2 streams and add replication method metadata
         for stream_catalog in found_catalogs:
             annotated_schema = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
@@ -213,32 +220,86 @@ class MongoDBIncremental(unittest.TestCase):
         exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
         menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
 
-
         # verify the persisted schema was correct
         messages_by_stream = runner.get_records_from_target_output()
 
+        # gather expectations
+        expected_schema = {'type': 'object'}
 
-        # assert that each of the streams that we synced are the ones that we expect to see
+        for tap_stream_id in self.expected_sync_streams():
+            with self.subTest(stream=tap_stream_id):
+
+                # gather results
+                persisted_schema = messages_by_stream[tap_stream_id]['schema']
+
+                # assert the schema is an object
+                self.assertDictEqual(expected_schema, persisted_schema)
+
+
+        # verify that each of the streams that we synced are the ones that we expect to see
         record_count_by_stream = runner.examine_target_output_file(self,
                                                                    conn_id,
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-
-        # Verify that the full table was syncd
+        # verify that the entire collection was syncd by comparing row counts against the source
         for tap_stream_id in self.expected_sync_streams():
-            self.assertEqual(self.expected_row_counts()[tap_stream_id],
-                             record_count_by_stream[tap_stream_id])
+            with self.subTest(stream=tap_stream_id):
 
-        # Verify that we have 'initial_full_table_complete' bookmark
+                expected_row_count = self.expected_row_counts()[tap_stream_id]
+                row_count = record_count_by_stream[tap_stream_id]
+
+                self.assertEqual(expected_row_count, row_count)
+
+
+        # verify state is saved in the proper format for all streams
         state = menagerie.get_state(conn_id)
+        expected_state_keys = {
+            'last_replication_method',
+            'replication_key_name',
+            'replication_key_type',
+            'replication_key_value',
+            'version',
+        }
+        for tap_stream_id in self.expected_check_streams():
+            with self.subTest(stream=tap_stream_id):
+                bookmark = state['bookmarks'][tap_stream_id]
+
+                # gather expectations
+                stream = tap_stream_id.split('-')[1]
+                expected_replication_keys = self.expected_valid_replication_keys()[stream]
+
+                # gather results
+                replication_key = bookmark['replication_key_name']
+                replication_key_type = bookmark['replication_key_type']
+
+                # assert that all expected bookmark keys are present
+                self.assertSetEqual(expected_state_keys, set(bookmark.keys()))
+
+                # assert all bookmark keys have values
+                for key in expected_state_keys:
+                    self.assertIsNotNone(bookmark[key])
+
+                # assert incremental sync was performed
+                self.assertEqual('INCREMENTAL', bookmark['last_replication_method'])
+
+                # assert the replication key was used to save state
+                self.assertIn(replication_key, expected_replication_keys)
+
+                # assert the replication key type is a valid datatype
+                self.assertIn(replication_key_type, VALID_REPLICATION_TYPES)
+
+                # TODO re-review these assertions
+
+        self.assertIsNone(state['currently_syncing'])
+
         first_versions = {}
 
         # -----------------------------------
         # ------------ Second Sync ----------
         # -----------------------------------
 
-        # Add some records
+        # Perform data manipulations
         with get_test_connection() as client:
 
             # insert two documents with date_field > bookmark for next sync
@@ -300,6 +361,10 @@ class MongoDBIncremental(unittest.TestCase):
                     "64_bit_int_field": 34359738368 + 51
                 })
 
+            # update a document with date_field > bookmark for next sync
+            import ipdb; ipdb.set_trace()
+            1+1
+            # client["simple_db"]['simple_coll_3'].update({'date_field'})
 
         # Run sync
         sync_job_name = runner.run_sync_mode(self, conn_id)
