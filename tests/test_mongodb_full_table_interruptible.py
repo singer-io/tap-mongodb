@@ -148,6 +148,23 @@ class MongoDBFullTableInterruptible(unittest.TestCase):
                 }
                 versions[tap_stream_id] = version
 
+        # update existing documents in collection with int_field value less than 25, and verify they do not come up in the sync
+        # update existing documents in collection with int_field value greater than 25, and verify they come up in the sync
+
+            # find_one() is going to retreive the first document in the collection
+            doc_to_update_1 = client["simple_db"]["simple_coll_1"].find_one()
+            client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": doc_to_update_1["_id"]}, {"$set": {"int_field": 999}})
+
+            doc_to_update_2 = client["simple_db"]["simple_coll_2"].find_one()
+            client["simple_db"]["simple_coll_2"].find_one_and_update({"_id": doc_to_update_2["_id"]}, {"$set": {"int_field": 888}})
+
+            doc_to_update_3 = client["simple_db"]["simple_coll_1"].find_one({"int_field": 30})
+            client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": doc_to_update_3["_id"]}, {"$set": {"int_field": 777}})
+
+            doc_to_update_4 = client["simple_db"]["simple_coll_2"].find_one({"int_field": 80})
+            client["simple_db"]["simple_coll_2"].find_one_and_update({"_id": doc_to_update_4["_id"]}, {"$set": {"int_field": 666}})
+
+
         menagerie.set_state(conn_id, interrupted_state)
 
         runner.run_sync_mode(self, conn_id)
@@ -180,6 +197,28 @@ class MongoDBFullTableInterruptible(unittest.TestCase):
                          interrupted_state['bookmarks']['simple_db-simple_coll_1']['max_id_value'])
         self.assertEqual(records_by_stream['simple_coll_2']['messages'][-2]['data']['_id'],
                          interrupted_state['bookmarks']['simple_db-simple_coll_2']['max_id_value'])
+
+        # verify we are not seeing any documents which were updated having id < interrupted id value
+        self.assertNotEqual(999, records_by_stream['simple_coll_1']['messages'][0]['data']['int_field'])
+        self.assertNotEqual(888, records_by_stream['simple_coll_2']['messages'][0]['data']['int_field'])
+
+        int_value = False
+        for x in records_by_stream['simple_coll_1']['messages'][:-1]:
+            # We are not considering the last element of this list because it does not have 'data'
+            if int(x['data']['int_field']) == 999:
+                int_value = True
+        self.assertEqual(False, int_value)
+
+        int_value2 = False
+        for x in records_by_stream['simple_coll_1']['messages'][:-1]:
+            if x['data']['int_field'] == 888:
+                int_value2 = True
+        self.assertEqual(False, int_value2)
+
+        # verify we are seeing the documents which were updated having id > interruped id value
+        # we are picking the 5th and 15th element in the list because we updated the 30th and 40th document, (doc starting with 25)
+        self.assertEqual(777, records_by_stream['simple_coll_1']['messages'][5]['data']['int_field'])
+        self.assertEqual(666, records_by_stream['simple_coll_2']['messages'][30]['data']['int_field'])
 
         # assert that final state has no last_id_fetched and max_id_value bookmarks
         final_state = menagerie.get_state(conn_id)
