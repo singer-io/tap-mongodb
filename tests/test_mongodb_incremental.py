@@ -99,8 +99,8 @@ class MongoDBIncremental(TestCase):
 
     def expected_last_sync_row_counts(self):
         return {
-            'simple_coll_1': 50,
-            'simple_coll_2': 100,
+            'simple_coll_1': 53, # 50 documents for initial insert, 2 documents inserted at the start of sync2 , 1 document which was updated at the end of sync 2. This is the last update before sync 3 so as part of historical sync this data is captured as well as in the log for log based replication
+            'simple_coll_2': 102,
             **{"simple_coll_{}".format(k): 1 for k in self.key_names()}
         }
 
@@ -426,6 +426,7 @@ class MongoDBIncremental(TestCase):
                                                                    self.expected_pks())
 
         messages_by_stream = runner.get_records_from_target_output()
+        second_state = menagerie.get_state(conn_id)
         records_by_stream = {}
         for stream_name in self.expected_sync_streams():
             records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages'] if x.get('action') == 'upsert']
@@ -475,5 +476,5 @@ class MongoDBIncremental(TestCase):
                                                                    conn_id,
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
-        for tap_stream_id in self.expected_sync_streams():
-            self.assertGreaterEqual(record_count_by_stream[tap_stream_id], self.expected_last_sync_row_counts()[tap_stream_id])
+
+        self.assertDictEqual(record_count_by_stream, self.expected_last_sync_row_counts())

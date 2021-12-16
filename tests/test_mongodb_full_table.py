@@ -213,7 +213,7 @@ class MongoDBFullTable(unittest.TestCase):
         #  ----------- Second full Table Sync ---------
         #  -------------------------------------------
         with get_test_connection() as client:
-        # update existing documents in the collection to make sure we get the updates as well in the next sync
+            # update existing documents in the collection to make sure we get the updates as well in the next sync
             doc_to_update = client["simple_db"]["simple_coll_1"].find_one()
             client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": doc_to_update["_id"]}, {"$set": {"int_field": 999}})
 
@@ -223,7 +223,7 @@ class MongoDBFullTable(unittest.TestCase):
             doc_to_update = client["admin"]["admin_coll_1"].find_one()
             client["admin"]["admin_coll_1"].find_one_and_update({"_id": doc_to_update["_id"]}, {"$set": {"int_field": 777}})
 
-        # add 2 rows and run full table again, make sure we get initial number + 2
+            # add 2 rows and run full table again, make sure we get initial number + 2
             client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(2))
 
             client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(2))
@@ -282,14 +282,7 @@ class MongoDBFullTable(unittest.TestCase):
             self.assertNotEqual(first_versions[tap_stream_id], second_versions[tap_stream_id])
 
             # version which is larger than the previous target version
-            self.assertTrue(second_versions[tap_stream_id] > first_versions[tap_stream_id])
+            self.assertGreater(second_versions[tap_stream_id], first_versions[tap_stream_id])
 
             # verify that menagerie state does include the version which matches the target version
-            self.assertEqual(records_by_stream[self.tap_stream_id_to_stream()[tap_stream_id]]['table_version'], second_versions[tap_stream_id])
-
-            # TODO: check with kyle on the below two assertions, they are identical to the above two assertions
-            # version which is larger than the previous target version
-            self.assertTrue(second_versions[tap_stream_id] > first_versions[tap_stream_id])
-
-            # version matches the target version
             self.assertEqual(records_by_stream[self.tap_stream_id_to_stream()[tap_stream_id]]['table_version'], second_versions[tap_stream_id])

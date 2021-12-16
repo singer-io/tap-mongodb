@@ -199,16 +199,17 @@ class MongoDBFullTableInterruptible(unittest.TestCase):
                          interrupted_state['bookmarks']['simple_db-simple_coll_2']['max_id_value'])
 
         # verify we are not seeing any documents which were updated having id < interrupted id value
+        # checking just the first document value
         self.assertNotEqual(999, records_by_stream['simple_coll_1']['messages'][0]['data']['int_field'])
         self.assertNotEqual(888, records_by_stream['simple_coll_2']['messages'][0]['data']['int_field'])
-
+        # checking if the updates are visible in all the documents in simple_coll_1
         int_value = False
         for x in records_by_stream['simple_coll_1']['messages'][:-1]:
             # We are not considering the last element of this list because it does not have 'data'
             if int(x['data']['int_field']) == 999:
                 int_value = True
         self.assertEqual(False, int_value)
-
+        # checking if the updates are visible in all the documents in simple_coll_2
         int_value2 = False
         for x in records_by_stream['simple_coll_1']['messages'][:-1]:
             if x['data']['int_field'] == 888:
