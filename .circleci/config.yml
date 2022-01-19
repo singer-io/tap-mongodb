@@ -56,7 +56,7 @@ jobs:
           name: 'Integration Tests'
           command: |
             apt update
-            apt install curl
+            apt install -y curl
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.8.0
