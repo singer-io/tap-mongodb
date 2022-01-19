@@ -36,7 +36,6 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/sandbox tap-tester.env
             pyenv local 3.5.6
             python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
@@ -59,9 +58,10 @@ jobs:
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.8.0
-            run-test --tap=tap-mongodb tests
+            #run-test --tap=tap-mongodb tests
+            exit 1
       - slack/notify-on-failure:
-          only_for_branches: master
+          only_for_branches: qa-config
 
 workflows:
   version: 2
