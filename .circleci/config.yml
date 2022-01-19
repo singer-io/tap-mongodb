@@ -60,8 +60,13 @@ jobs:
             pip install pymongo==3.8.0
             #run-test --tap=tap-mongodb tests
             exit 1
-      - slack/notify-on-failure:
+      - slack/status:
+          channel: 'tier-1-taps-monitor'
+          mentions: "${CIRCLE_USERNAME}"
+          fail_only: true
           only_for_branches: qa-config
+          failure_message: |
+            :red_circle: ${CIRCLE_JOB} failed!
 
 workflows:
   version: 2
@@ -70,7 +75,7 @@ workflows:
       - build:
           context:
             - circleci-user
-            # - tier-1-tap-user
+            - tier-1-tap-user
   build_daily:
     <<: *commit_jobs
     triggers:
