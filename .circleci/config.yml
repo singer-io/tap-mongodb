@@ -59,11 +59,6 @@ jobs:
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.8.0
             run-test --tap=tap-mongodb tests
-      - run:
-          name: 'Get Curl'
-          command: |
-            apt update
-            apt install -y curl
       - slack/status:
           channel: 'tier-1-taps-monitor'
           mentions: "${CIRCLE_USERNAME}"
