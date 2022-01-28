@@ -116,7 +116,7 @@ class MongoDBOpenTransactions(unittest.TestCase):
             # drop all dbs/collections
             drop_all_collections(client)
 
-
+            # Create session 1 and insert docs to simple_coll_1 & simple_coll_2
 
             #################
             # Session 1
@@ -134,6 +134,14 @@ class MongoDBOpenTransactions(unittest.TestCase):
 
             session1.commit_transaction()
 
+            # Create session 2
+            '''
+                create empty collection
+                update documents in simple_coll_1 & simple_coll_2 and tie to session 2
+                insert documents in simple_coll_3 and tie to session 2
+                execute the sync with uncommitted changes
+                validate that the uncommitted changes are not replicated by the sync
+            '''
             ################
             # Session 2
             ################
@@ -180,11 +188,11 @@ class MongoDBOpenTransactions(unittest.TestCase):
                                                                                         additional_md)
 
             # run full table sync
-            sync_job_name = runner.run_sync_mode(self, conn_id)
+            sync_1 = runner.run_sync_mode(self, conn_id)
 
             # check exit status
-            exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
-            menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
+            exit_status = menagerie.get_exit_status(conn_id, sync_1)
+            menagerie.verify_sync_exit_status(self, exit_status, sync_1)
 
             # streams that we synced are the ones that we expect to see
             records_by_stream = runner.get_records_from_target_output()
@@ -196,8 +204,25 @@ class MongoDBOpenTransactions(unittest.TestCase):
             # validate the record count in collections which are part of session1 and session2, should not read updates on coll 1 and coll 2 and insert on coll 3. Because the transaction is not committed
             self.assertEqual(self.expected_row_counts_sync_1(), record_count_by_stream)
 
+            # validate there are no duplicates replicated as part of sync1
+            records = {}
+            pk_dict = {}
+            for stream in self.expected_sync_streams_1():
+                records[stream] = [x for x in records_by_stream[stream]['messages'] if x.get('action') == 'upsert']
+                pk = set()
+                for i in range(len(records[stream])):
+                    pk.add(records[stream][i]['data']['int_field'])
+                pk_dict[stream] = len(pk)
+
+            self.assertEqual(self.expected_row_counts_sync_1(), pk_dict)
+
             session2.commit_transaction()
 
+            # Create session 3
+            '''
+               Execute another sync
+               Validate that the documents committed as part of session 2 should now be replicated in sync_2
+            '''
             ################
             # Session 3
             ################
@@ -222,6 +247,19 @@ class MongoDBOpenTransactions(unittest.TestCase):
             # we see 2 records for coll 1 and coll 2, 1 record for update and the other record for the bookmarked record
             self.assertEqual(self.expected_row_counts_sync_2(), record_count_by_stream_2)
 
+            # validate there are no duplicates replicated as part of sync1
+            records = {}
+            pk_dict = {}
+            for stream in self.expected_sync_streams_1():
+                records[stream] = [x for x in records_by_stream_2[stream]['messages'] if x.get('action') == 'upsert']
+                pk = set()
+                for i in range(len(records[stream])):
+                    pk.add(records[stream][i]['data']['int_field'])
+                pk_dict[stream] = len(pk)
+
+            self.assertEqual(self.expected_row_counts_sync_2(), pk_dict)
+
+
             # Test case to validate tap behaviour when we delete bookmarked document and run sync
             state_2 = menagerie.get_state(conn_id)
 
@@ -237,10 +275,12 @@ class MongoDBOpenTransactions(unittest.TestCase):
 
             session3.commit_transaction()
 
-            ###############
-            # Session 4
-            ###############
-
+            '''
+               Execute the sync, after the commit on session 3
+               Session 3 commits includes deleting the bookmarked value in each of the collection
+               Validate the state does not change after deleting the bookmarked value
+               Validate that the sync does not replicate any documents
+            '''
             state_3 = menagerie.get_state(conn_id)
             sync_3 = runner.run_sync_mode(self, conn_id)
             exit_status_3 = menagerie.get_exit_status(conn_id, sync_3)
