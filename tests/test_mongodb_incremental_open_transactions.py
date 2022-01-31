@@ -88,6 +88,20 @@ class MongoDBOpenTransactions(unittest.TestCase):
             'simple_db_simple_coll_3'
         }
 
+    def expected_pk_values_2(self):
+        return {
+            'simple_db_simple_coll_1': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+            'simple_db_simple_coll_2': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19],
+            'simple_db_simple_coll_3': [] # insert to coll 3 is not committed in session 2, hence we are expecting no records to be replicated
+        }
+
+    def expected_pk_values_3(self):
+        return {
+            'simple_db_simple_coll_1': [9, 11], # bookmarked value = 9 and updated value in test = 11
+            'simple_db_simple_coll_2': [19, 21], # bookmarked value = 19 and updated value in test = 21
+            'simple_db_simple_coll_3': [0, 1, 2, 3, 4]
+        }
+
     def name(self):
         return "tap_tester_mongodb_open_transaction"
 
@@ -205,16 +219,16 @@ class MongoDBOpenTransactions(unittest.TestCase):
             self.assertEqual(self.expected_row_counts_sync_1(), record_count_by_stream)
 
             # validate there are no duplicates replicated as part of sync1
-            records = {}
-            pk_dict = {}
+            records_2 = {}
+            pk_dict_2 = {}
             for stream in self.expected_sync_streams_1():
-                records[stream] = [x for x in records_by_stream[stream]['messages'] if x.get('action') == 'upsert']
-                pk = set()
-                for i in range(len(records[stream])):
-                    pk.add(records[stream][i]['data']['int_field'])
-                pk_dict[stream] = len(pk)
+                records_2[stream] = [x for x in records_by_stream[stream]['messages'] if x.get('action') == 'upsert']
+                pk_2 = []
+                for record in range(len(records_2[stream])):
+                    pk_2.append(records_2[stream][record]['data']['int_field'])
+                pk_dict_2[stream] = pk_2
 
-            self.assertEqual(self.expected_row_counts_sync_1(), pk_dict)
+            self.assertEqual(self.expected_pk_values_2(), pk_dict_2)
 
             session2.commit_transaction()
 
@@ -248,16 +262,16 @@ class MongoDBOpenTransactions(unittest.TestCase):
             self.assertEqual(self.expected_row_counts_sync_2(), record_count_by_stream_2)
 
             # validate there are no duplicates replicated as part of sync1
-            records = {}
-            pk_dict = {}
+            records_3 = {}
+            pk_dict_3 = {}
             for stream in self.expected_sync_streams_1():
-                records[stream] = [x for x in records_by_stream_2[stream]['messages'] if x.get('action') == 'upsert']
-                pk = set()
-                for i in range(len(records[stream])):
-                    pk.add(records[stream][i]['data']['int_field'])
-                pk_dict[stream] = len(pk)
+                records_3[stream] = [x for x in records_by_stream_2[stream]['messages'] if x.get('action') == 'upsert']
+                pk_3 = []
+                for record in range(len(records_3[stream])):
+                    pk_3.append(records_3[stream][record]['data']['int_field'])
+                pk_dict_3[stream] = pk_3
 
-            self.assertEqual(self.expected_row_counts_sync_2(), pk_dict)
+            self.assertEqual(self.expected_pk_values_3(), pk_dict_3)
 
 
             # Test case to validate tap behaviour when we delete bookmarked document and run sync
