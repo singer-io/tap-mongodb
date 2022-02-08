@@ -17,8 +17,10 @@ def get_max_id_value(collection):
     return None
 
 
+
+
 # pylint: disable=too-many-locals,invalid-name,too-many-statements
-def sync_collection(client, stream, state, projection):
+def sync_collection(client, stream, state, projection, fields_to_drop):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting full table sync for %s', tap_stream_id)
 
@@ -27,6 +29,9 @@ def sync_collection(client, stream, state, projection):
 
     db = client[database_name]
     collection = db[stream['stream']]
+    
+    for field in fields_to_drop:
+        collection.update_many({}, {'$unset': {field: ''}})
 
     #before writing the table version to state, check if we had one to begin with
     first_run = singer.get_bookmark(state, stream['tap_stream_id'], 'version') is None
@@ -110,12 +115,13 @@ def sync_collection(client, stream, state, projection):
             rows_saved += 1
 
             schema_build_start_time = time.time()
-            if common.row_to_schema(schema, row):
-                singer.write_message(singer.SchemaMessage(
-                    stream=common.calculate_destination_stream_name(stream),
-                    schema=schema,
-                    key_properties=['_id']))
-                common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
+            # if common.row_to_schema(schema, row):
+
+             #   singer.write_message(singer.SchemaMessage(
+             #           stream=common.calculate_destination_stream_name(stream),
+             #           schema=schema,
+             #           key_properties=['_id']))
+             #   common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
             common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
 
             record_message = common.row_to_singer_record(stream,

@@ -3,27 +3,22 @@ import copy
 import json
 import ssl
 import sys
-import time
-import pymongo
-from bson import timestamp
 
+import pymongo
 import singer
 from singer import metadata, metrics, utils
 
 import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
-import tap_mongodb.sync_strategies.oplog as oplog
 import tap_mongodb.sync_strategies.incremental as incremental
-
+import tap_mongodb.sync_strategies.oplog as oplog
 
 LOGGER = singer.get_logger()
 
 REQUIRED_CONFIG_KEYS = [
     'host',
-    'port',
     'user',
-    'password',
-    'database'
+    'password'
 ]
 
 IGNORE_DBS = ['system', 'local', 'config']
@@ -103,16 +98,22 @@ def get_roles(client, config):
                         roles.append(sub_role)
     return roles
 
+
 def get_databases(client, config):
-    roles = get_roles(client, config)
-    LOGGER.info('Roles: %s', roles)
-
-    can_read_all = len([r for r in roles if r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES]) > 0
-
-    if can_read_all:
+    if 'database' not in config:
+        # handle the case when no database is provided - read all databases
+        LOGGER.info('No Roles loaded')
         db_names = [d for d in client.list_database_names() if d not in IGNORE_DBS]
     else:
-        db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
+        # take roles into consideration
+        roles = get_roles(client, config)
+        LOGGER.info('Roles: %s', roles)
+        can_read_all = any([r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES for r in roles])
+        if can_read_all:
+            db_names = [d for d in client.list_database_names() if d not in IGNORE_DBS]
+        else:
+            db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
+
     db_names = list(set(db_names))  # Make sure each db is only in the list once
     LOGGER.info('Datbases: %s', db_names)
     return db_names
@@ -179,7 +180,7 @@ def do_discover(client, config):
                         db_name, collection_name)
             streams.append(produce_collection_schema(collection))
 
-    json.dump({'streams' : streams}, sys.stdout, indent=2)
+    json.dump({'streams': streams}, sys.stdout, indent=2)
 
 
 def is_stream_selected(stream):
@@ -191,7 +192,6 @@ def is_stream_selected(stream):
 
 
 def get_streams_to_sync(streams, state):
-
     # get selected streams
     selected_streams = [s for s in streams if is_stream_selected(s)]
     # prioritize streams that have not been processed
@@ -214,7 +214,7 @@ def get_streams_to_sync(streams, state):
             lambda s: s['tap_stream_id'] == currently_syncing,
             ordered_streams))
         non_currently_syncing_streams = list(filter(lambda s: s['tap_stream_id']
-                                                    != currently_syncing,
+                                                              != currently_syncing,
                                                     ordered_streams))
 
         streams_to_sync = currently_syncing_stream + non_currently_syncing_streams
@@ -229,6 +229,7 @@ def write_schema_message(stream):
         stream=common.calculate_destination_stream_name(stream),
         schema=stream['schema'],
         key_properties=['_id']))
+
 
 def load_stream_projection(stream):
     md_map = metadata.to_map(stream['metadata'])
@@ -246,9 +247,10 @@ def load_stream_projection(stream):
     if stream_projection and stream_projection.get('_id') == 0:
         raise common.InvalidProjectionException(
             "Projection blacklists key property id for collection {}" \
-            .format(stream['tap_stream_id']))
+                .format(stream['tap_stream_id']))
 
     return stream_projection
+
 
 def clear_state_on_replication_change(stream, state):
     md_map = metadata.to_map(stream['metadata'])
@@ -276,14 +278,14 @@ def clear_state_on_replication_change(stream, state):
 
     return state
 
-def sync_stream(client, stream, state):
+
+def sync_stream(client, stream, state, fields_to_drop):
     tap_stream_id = stream['tap_stream_id']
 
     common.COUNTS[tap_stream_id] = 0
     common.TIMES[tap_stream_id] = 0
     common.SCHEMA_COUNT[tap_stream_id] = 0
     common.SCHEMA_TIMES[tap_stream_id] = 0
-
 
     md_map = metadata.to_map(stream['metadata'])
     replication_method = metadata.get(md_map, (), 'replication-method')
@@ -321,15 +323,15 @@ def sync_stream(client, stream, state):
                     collection_oplog_ts = oplog.get_latest_ts(client)
                     oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
-                full_table.sync_collection(client, stream, state, stream_projection)
+                full_table.sync_collection(client, stream, state, stream_projection, fields_to_drop)
 
             oplog.sync_collection(client, stream, state, stream_projection)
 
         elif replication_method == 'FULL_TABLE':
-            full_table.sync_collection(client, stream, state, stream_projection)
+            full_table.sync_collection(client, stream, state, stream_projection, fields_to_drop)
 
         elif replication_method == 'INCREMENTAL':
-            incremental.sync_collection(client, stream, state, stream_projection)
+            incremental.sync_collection(client, stream, state, stream_projection, fields_to_drop)
         else:
             raise Exception(
                 "only FULL_TABLE, LOG_BASED, and INCREMENTAL replication \
@@ -340,12 +342,12 @@ def sync_stream(client, stream, state):
     singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
 
-def do_sync(client, catalog, state):
+def do_sync(client, catalog, state, fields_to_drop):
     all_streams = catalog['streams']
     streams_to_sync = get_streams_to_sync(all_streams, state)
 
     for stream in streams_to_sync:
-        sync_stream(client, stream, state)
+        sync_stream(client, stream, state, fields_to_drop)
 
     LOGGER.info(common.get_sync_summary(catalog))
 
@@ -358,20 +360,35 @@ def main_impl():
     verify_mode = config.get('verify_mode', 'true') == 'true'
     use_ssl = config.get('ssl') == 'true'
 
-    connection_params = {"host": config['host'],
-                         "port": int(config['port']),
-                         "username": config.get('user', None),
-                         "password": config.get('password', None),
-                         "authSource": config['database'],
-                         "ssl": use_ssl,
-                         "replicaset": config.get('replica_set', None),
-                         "readPreference": 'secondaryPreferred'}
+    # Use DNS Seed List
+    srv = config.get('srv') == 'true'
 
-    # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
-    if not verify_mode and use_ssl:
-        connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+    # if no dropping fields specified, create empty list
+    if not 'fields_to_drop' in list(config.keys()):
+        config['fields_to_drop'] = []
 
-    client = pymongo.MongoClient(**connection_params)
+    # create the connection
+    if srv:
+        connection_params = {
+            "host": config['host'],
+            "port": int(config.get('port', 27017)),
+            "username": config.get('user', None),
+            "password": config.get('password', None),
+            "authSource": config.get('database', None),
+            "ssl": use_ssl,
+            "replicaset": config.get('replica_set', None),
+            "readPreference": 'secondaryPreferred'
+        }
+
+        # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
+        if not verify_mode and use_ssl:
+            connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+
+        client = pymongo.MongoClient(**connection_params)
+    else:
+        # TODO - does not take all parameters into account -> just our case
+        connection_url = "mongodb+srv://{}:{}@{}".format(config['user'], config['password'], config['host'])
+        client = pymongo.MongoClient(connection_url)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
@@ -384,7 +401,8 @@ def main_impl():
         do_discover(client, config)
     elif args.catalog:
         state = args.state or {}
-        do_sync(client, args.catalog.to_dict(), state)
+        do_sync(client, args.catalog.to_dict(), state, config['fields_to_drop'])
+
 
 def main():
     try:

@@ -289,11 +289,13 @@ def row_to_schema(schema, row):
 
             # get pointer to field's anyOf list
             if not schema.get('properties', {}).get(field):
-                schema['properties'][field] = {'anyOf': [{}]}
+                schema['properties'][field] = {'anyOf': [{"type": "null"}]}
             anyof_schema = schema['properties'][field]['anyOf']
 
             # add value's schema to anyOf list
             changed = add_to_any_of(anyof_schema, value) or changed
+
+            break
 
     return changed
 
