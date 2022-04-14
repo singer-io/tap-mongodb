@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import copy
 import time
 import pymongo
 import singer
