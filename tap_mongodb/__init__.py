@@ -310,6 +310,8 @@ def sync_stream(client, stream, state):
                 LOGGER.info("Clearing state because Oplog has aged out")
                 state.get('bookmarks', {}).pop(tap_stream_id)
 
+            collection_oplog_ts = oplog.get_latest_ts(client)
+
             # make sure initial full table sync has been completed
             if not singer.get_bookmark(state, tap_stream_id, 'initial_full_table_complete'):
                 msg = 'Must complete full table sync before starting oplog replication for %s'
@@ -318,7 +320,6 @@ def sync_stream(client, stream, state):
                 # only mark current ts in oplog on first sync so tap has a
                 # starting point after the full table sync
                 if singer.get_bookmark(state, tap_stream_id, 'version') is None:
-                    collection_oplog_ts = oplog.get_latest_ts(client)
                     oplog.update_bookmarks(state, tap_stream_id, collection_oplog_ts)
 
                 full_table.sync_collection(client, stream, state, stream_projection)
