@@ -324,7 +324,7 @@ def sync_stream(client, stream, state):
 
                 full_table.sync_collection(client, stream, state, stream_projection)
 
-            oplog.sync_collection(client, stream, state, stream_projection)
+            oplog.sync_collection(client, stream, state, stream_projection, collection_oplog_ts)
 
         elif replication_method == 'FULL_TABLE':
             full_table.sync_collection(client, stream, state, stream_projection)

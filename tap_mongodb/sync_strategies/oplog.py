@@ -104,7 +104,7 @@ def flush_buffer(client, update_buffer, stream_projection, db_name, collection_n
 
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
-def sync_collection(client, stream, state, stream_projection):
+def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None):
     tap_stream_id = stream['tap_stream_id']
     LOGGER.info('Starting oplog sync for %s', tap_stream_id)
 
@@ -256,6 +256,14 @@ def sync_collection(client, stream, state, stream_projection):
 
             singer.write_message(record_message)
             rows_saved += 1
+
+
+    if rows_saved == 0:
+        # We went a whole sync where this stream did not see updates. So we can move the bookmark to the max position in the oplog
+        state = update_bookmarks(state,
+                                 tap_stream_id,
+                                 max_oplog_ts)
+        singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
     common.COUNTS[tap_stream_id] += rows_saved
     common.TIMES[tap_stream_id] += time.time()-start_time
