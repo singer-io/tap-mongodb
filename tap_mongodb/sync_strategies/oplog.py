@@ -240,7 +240,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                 update_buffer = set()
 
                 # write state
-                singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+                singer.write_message(singer.StateMessage(value=state))
 
         # flush buffer if finished with oplog
         for buffered_row in flush_buffer(client,
@@ -263,7 +263,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
         state = update_bookmarks(state,
                                  tap_stream_id,
                                  max_oplog_ts)
-        singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+        singer.write_message(singer.StateMessage(value=state))
 
     common.COUNTS[tap_stream_id] += rows_saved
     common.TIMES[tap_stream_id] += time.time()-start_time
