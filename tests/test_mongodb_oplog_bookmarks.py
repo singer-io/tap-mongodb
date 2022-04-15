@@ -131,7 +131,7 @@ class MongoDBOplogBookmarks(unittest.TestCase):
         #  -----------------------------------
         # ----------- Initial Full Table ---------
         #  -----------------------------------
-        # Select simple_coll_1 and simple_coll_2 streams and add replication method metadata
+        # Select simple_coll_1 and add replication method metadata
         additional_md = [{ "breadcrumb" : [],
                            "metadata" : {'replication-method' : 'LOG_BASED'}}]
         for stream_catalog in found_catalogs:
@@ -222,10 +222,8 @@ class MongoDBOplogBookmarks(unittest.TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # Verify that we got at least 6 records due to changes
-        # (could be more due to overlap in gte oplog clause)
+        # Verify that we got no records
         self.assertEqual(0, record_count_by_stream['simple_coll_1'])
-
 
         final_state = menagerie.get_state(conn_id)
 
