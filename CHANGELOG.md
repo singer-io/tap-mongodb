@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.0
+  * Optimize oplog extractions to only query for the selected tables [#78](https://github.com/singer-io/tap-mongodb/pull/78)
+
 ## 2.0.1
   * Modify `get_databases` function to return a unique list of databases [#58](https://github.com/singer-io/tap-mongodb/pull/58)
 
@@ -78,7 +81,7 @@
 
 ## 0.1.0
  * Added key-based incremental sync [commit](https://github.com/singer-io/tap-mongodb/commit/b618b11d91e111680f70b402c6e94c9bf40c7b8f)
- 
+
 ## 0.0.5
  * Fixed bug in oplog projections [commit](https://github.com/singer-io/tap-mongodb/commit/b400836678440499d4a15fb7d5b0a40a13e3342e)
 
