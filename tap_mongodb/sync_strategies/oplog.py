@@ -159,13 +159,6 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                 raise common.MongoAssertionException(
                     "Mongo is not honoring the sort ascending param")
 
-            if row.get('ns') != '{}.{}'.format(database_name, collection_name):
-                if row.get('ts'):
-                    state = update_bookmarks(state,
-                                             tap_stream_id,
-                                             row['ts'])
-                continue
-
             row_op = row['op']
 
             if row_op == 'i':
