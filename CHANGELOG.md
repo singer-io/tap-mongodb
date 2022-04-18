@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.1
+  * Fix bug in oplog bookmarking where the bookmark would not advance due to fencepost querying finding a single record [#80](https://github.com/singer-io/tap-mongodb/pull/80)
+
 ## 2.1.0
   * Optimize oplog extractions to only query for the selected tables [#78](https://github.com/singer-io/tap-mongodb/pull/78)
 
