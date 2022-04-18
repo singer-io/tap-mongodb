@@ -125,4 +125,4 @@ def sync_collection(client, stream, state, projection):
 
     singer.write_message(activate_version_message)
 
-    LOGGER.info('Syncd %s records for %s', rows_saved, tap_stream_id)
+    LOGGER.info('Synced %s records for %s', rows_saved, tap_stream_id)

@@ -250,13 +250,17 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
             rows_saved += 1
 
 
-    if rows_saved == 0:
-        # We went a whole sync where this stream did not see updates. So we can move the bookmark to the max position in the oplog
-        state = update_bookmarks(state,
-                                 tap_stream_id,
-                                 max_oplog_ts)
-        singer.write_message(singer.StateMessage(value=state))
+    # Compare the current bookmark with the max_oplog_ts and write the max
+    bookmarked_ts = timestamp.Timestamp(state.get('bookmarks', {}).get(tap_stream_id, {}).get('oplog_ts_time'),
+                                        state.get('bookmarks', {}).get(tap_stream_id, {}).get('oplog_ts_inc'))
+
+    actual_max_ts = max(bookmarked_ts, max_oplog_ts)
+
+    state = update_bookmarks(state,
+                             tap_stream_id,
+                             actual_max_ts)
+    singer.write_message(singer.StateMessage(value=state))
 
     common.COUNTS[tap_stream_id] += rows_saved
     common.TIMES[tap_stream_id] += time.time()-start_time
-    LOGGER.info('Syncd %s records for %s', rows_saved, tap_stream_id)
+    LOGGER.info('Synced %s records for %s', rows_saved, tap_stream_id)

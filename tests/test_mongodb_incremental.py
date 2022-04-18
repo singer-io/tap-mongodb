@@ -230,7 +230,7 @@ class MongoDBIncremental(TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # verify that the entire collection was syncd by comparing row counts against the source
+        # verify that the entire collection was synced by comparing row counts against the source
         for tap_stream_id in self.expected_sync_streams():
             with self.subTest(stream=tap_stream_id):
 

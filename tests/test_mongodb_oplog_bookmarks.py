@@ -158,7 +158,7 @@ class MongoDBOplogBookmarks(unittest.TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # Verify that the full table was syncd
+        # Verify that the full table was synced
         tap_stream_id = 'simple_db-simple_coll_1'
         self.assertGreaterEqual(record_count_by_stream['simple_coll_1'],
                                 self.expected_row_counts()['simple_coll_1'])
@@ -175,6 +175,13 @@ class MongoDBOplogBookmarks(unittest.TestCase):
         # Verify that we have a oplog_ts_time and oplog_ts_inc bookmark
         self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_time'])
         self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
+
+
+
+        # Insert records to coll_1 to get the bookmark to be a ts on coll_1
+        with get_test_connection() as client:
+            client["simple_db"]["simple_coll_1"].insert_one({"int_field": 101, "string_field": random_string_generator()})
+        sync_job_name = runner.run_sync_mode(self, conn_id)
 
 
         changed_ids = set()
@@ -222,8 +229,8 @@ class MongoDBOplogBookmarks(unittest.TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # Verify that we got no records
-        self.assertEqual(0, record_count_by_stream['simple_coll_1'])
+        # 1 record due to fencepost querying on oplog ts
+        self.assertEqual(1, record_count_by_stream['simple_coll_1'])
 
         final_state = menagerie.get_state(conn_id)
 
