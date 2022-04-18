@@ -34,7 +34,7 @@ def start_container(name):
 
     ip_addr = get_ip_addr(name)
     CONFIGURE_COMMAND = """
-    docker run --rm mongo mongo --host {} \test -u {} -p {} --authenticationDatabase admin --eval {}
+    docker run --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
     """.format(ip_addr,
                os.getenv('TAP_MONGODB_USER'),
                os.getenv('TAP_MONGODB_PASSWORD'),
