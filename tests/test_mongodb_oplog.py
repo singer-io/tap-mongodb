@@ -160,7 +160,7 @@ class MongoDBOplog(unittest.TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # Verify that the full table was syncd
+        # Verify that the full table was synced
         for tap_stream_id in self.expected_sync_streams():
             self.assertGreaterEqual(record_count_by_stream[tap_stream_id],self.expected_row_counts()[tap_stream_id])
 

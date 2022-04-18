@@ -263,4 +263,4 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
 
     common.COUNTS[tap_stream_id] += rows_saved
     common.TIMES[tap_stream_id] += time.time()-start_time
-    LOGGER.info('Syncd %s records for %s', rows_saved, tap_stream_id)
+    LOGGER.info('Synced %s records for %s', rows_saved, tap_stream_id)
