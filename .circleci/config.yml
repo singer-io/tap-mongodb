@@ -50,14 +50,14 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==3.8.0
+            pip install pymongo==3.12.3
             nosetests tests/unittests/
       - run:
           name: 'Integration Tests'
           command: |
             source tap-tester.env
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==3.8.0
+            pip install pymongo==3.12.3
             run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
