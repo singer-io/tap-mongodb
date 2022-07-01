@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.2
+  * Update pymongo to v3.12.3 [#81](https://github.com/singer-io/tap-mongodb/pull/81)
+
 ## 2.1.1
   * Fix bug in oplog bookmarking where the bookmark would not advance due to fencepost querying finding a single record [#80](https://github.com/singer-io/tap-mongodb/pull/80)
 
