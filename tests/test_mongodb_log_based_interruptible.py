@@ -2,22 +2,13 @@ import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
 import os
-import datetime
 import unittest
-import datetime
 import pymongo
 import string
 import random
 import time
-import re
-import pprint
-import pdb
-import bson
-from functools import reduce
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
-import decimal
 import copy
-
 
 RECORD_COUNT = {}
 
@@ -32,7 +23,7 @@ def generate_simple_coll_docs(num_docs):
         docs.append({"int_field": int_value, "string_field": random_string_generator()})
     return docs
 
-table_synced = "simple_coll_1"
+
 table_interrupted = "simple_coll_2"
 
 
@@ -66,6 +57,18 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
         return {
             'simple_coll_1': 10,
             'simple_coll_2': 20,
+        }
+
+    def expected_row_count_2(self):
+        return {
+            'simple_coll_1': 3,
+            'simple_coll_2': 13
+        }
+
+    def expected_row_count_3(self):
+        return {
+            'simple_coll_1': 0,
+            'simple_coll_2': 1
         }
 
     def expected_sync_streams(self):
@@ -191,36 +194,37 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
             # add the id bookmarks
             interrupted_state['bookmarks']['simple_db-'+table_interrupted].update(max_id)
             interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'max_id_type': 'ObjectId'})
-            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'last_id_type': 'ObjectId'})
+            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'last_id_fetched_type': 'ObjectId'})
             interrupted_state['bookmarks']['simple_db-'+table_interrupted].update(last_id)
             interrupted_state['currently_syncing'] = 'simple_db-'+table_interrupted
             versions[tap_stream_id] = version
 
-        # update existing documents in collection with int_field value less than 25, and verify they do not come up in the sync
-        # update existing documents in collection with int_field value greater than 25, and verify they come up in the sync
+            # Insert Update Delete few records in the collection
 
-            # find_one() is going to retreive the first document in the collection
             doc_to_update_1 = client["simple_db"]["simple_coll_1"].find_one()
             client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": doc_to_update_1["_id"]}, {"$set": {"int_field": 999}})
 
             doc_to_update_2 = client["simple_db"]["simple_coll_2"].find_one()
             client["simple_db"]["simple_coll_2"].find_one_and_update({"_id": doc_to_update_2["_id"]}, {"$set": {"int_field": 888}})
 
-            doc_to_update_3 = client["simple_db"]["simple_coll_1"].find_one({"int_field": 9})
-            client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": doc_to_update_3["_id"]}, {"$set": {"int_field": 777}})
+            doc_to_delete_1 = client["simple_db"]["simple_coll_1"].find_one({"int_field": 2})
+            client["simple_db"]["simple_coll_1"].delete_one({"_id": doc_to_delete_1["_id"]})
 
-            doc_to_update_4 = client["simple_db"]["simple_coll_2"].find_one({"int_field": 19})
-            client["simple_db"]["simple_coll_2"].find_one_and_update({"_id": doc_to_update_4["_id"]}, {"$set": {"int_field": 666}})
-            client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(5))
+            doc_to_delete_2 = client["simple_db"]["simple_coll_2"].find_one({"int_field": 2})
+            client["simple_db"]["simple_coll_2"].delete_one({"_id": doc_to_delete_2["_id"]})
 
-            client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(5))
+            last_inserted_coll_1 = client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(1))
+            # get the last inserted id in coll 1
+            last_inserted_id_coll_1 = str(last_inserted_coll_1.inserted_ids[0])
+
+            last_inserted_coll_2 = client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(1))
+            # get the last inserted id in coll 2
+            last_inserted_id_coll_2 = str(last_inserted_coll_2.inserted_ids[0])
 
         menagerie.set_state(conn_id, interrupted_state)
 
         ### Run 2nd sync ###
 
-        import ipdb; ipdb.set_trace()
-        1+1
         second_sync = runner.run_sync_mode(self, conn_id)
         second_sync_exit_status = menagerie.get_exit_status(conn_id, second_sync)
         menagerie.verify_sync_exit_status(self, second_sync_exit_status, second_sync)
@@ -231,10 +235,26 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
                                                                      conn_id,
                                                                      self.expected_sync_streams(),
                                                                      self.expected_pks())
+
+        # Verify the record count for the 2nd sync
+        for tap_stream_id in self.expected_sync_streams():
+            self.assertGreaterEqual(record_count_by_stream_2[tap_stream_id], self.expected_row_count_2()[tap_stream_id])
+
         second_state = menagerie.get_state(conn_id)
 
         # Verify the interrupted table is synced first
-        self.assertEqual(records_by_stream_2[0]['table_name'], table_interrupted)
+        second_sync_records = list(records_by_stream_2)
+        self.assertEqual(second_sync_records[0], table_interrupted)
+
+        # _id of the first record sync'd for each stream is the bookmarked
+        # last_id_fetched from the interrupted_state passed to the tap
+        self.assertEqual(records_by_stream_2['simple_coll_2']['messages'][0]['data']['_id'],
+                         interrupted_state['bookmarks']['simple_db-simple_coll_2']['last_id_fetched'])
+
+        # _id of the last record sync'd for each stream is the bookmarked
+        # max_id_value from the interrupted_state passed to the tap
+        self.assertEqual(records_by_stream['simple_coll_2']['messages'][-1]['data']['_id'],
+                         interrupted_state['bookmarks']['simple_db-simple_coll_2']['max_id_value'])
 
         # verify the second sync bookmarks matches our expectatinos
         for tap_stream_id in initial_state['bookmarks'].keys():
@@ -254,24 +274,57 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
             # verify the resumed sync has completed
             self.assertTrue(second_state['bookmarks'][tap_stream_id]['initial_full_table_complete'])
 
-            # for the previously synced tables verify the oplog_ts_inc moved forward
-            if tap_stream_id != f'{self.test_db_name}-{table_interrupted}':
-                self.assertGreater(second_state['bookmarks'][tap_stream_id]['oplog_ts_inc'],
-                                   initial_state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
-            else:
-                self.assertEqual(second_state['bookmarks'][tap_stream_id]['oplog_ts_inc'],
-                                 initial_state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
+            # for the previously synced tables verify the oplog_ts_time moved forward
+            self.assertGreater(second_state['bookmarks'][tap_stream_id]['oplog_ts_time'],
+                               initial_state['bookmarks'][tap_stream_id]['oplog_ts_time'])
 
         # verify the currently syncing state is none
         self.assertIsNone(second_state['currently_syncing'])
 
-        # # verify number records/messages for interrupted table
-        # messages = ordered_messages_by_stream[table_interrupted]
-        # self.assertEqual(1, record_count_by_stream_2[table_interrupted])
-        # self.assertEqual(2, len(messages))
+        #### Run 3rd Sync #####
 
-        # # verify values of records/messages for the interrupted table
-        # self.assertDictEqual(self.expected_records[table_interrupted][3], messages[0]['rec'])
-        # self.assertEqual('switch_view', messages[1]['action'])
+        third_sync = runner.run_sync_mode(self, conn_id)
+        third_sync_exit_status = menagerie.get_exit_status(conn_id, third_sync)
+        menagerie.verify_sync_exit_status(self, third_sync_exit_status, third_sync)
 
-        
+        records_by_stream_3 = runner.get_records_from_target_output()
+
+        record_count_by_stream_3 = runner.examine_target_output_file(self,
+                                                                     conn_id,
+                                                                     self.expected_sync_streams(),
+                                                                     self.expected_pks())
+
+
+        # Verify the record count for the 3rd sync
+        for tap_stream_id in self.expected_sync_streams():
+            self.assertEqual(record_count_by_stream_3[tap_stream_id], self.expected_row_count_3()[tap_stream_id])
+
+        # verify the only record replicated is the last inserted record in the collection 2
+        self.assertEqual(len(records_by_stream_3['simple_coll_2']['messages']), 2)
+        self.assertEqual(records_by_stream_3['simple_coll_2']['messages'][0]['action'], 'activate_version')
+        self.assertEqual(records_by_stream_3['simple_coll_2']['messages'][1]['action'], 'upsert')
+        self.assertEqual(records_by_stream_3['simple_coll_2']['messages'][1]['data']['_id'], last_inserted_id_coll_2)
+
+        third_state = menagerie.get_state(conn_id)
+
+        # verify the third sync bookmarks matches our expectatinos
+        for tap_stream_id in third_state['bookmarks'].keys():
+
+            # verify the bookmark keys have not changed in a resumed sync
+            self.assertSetEqual(
+                set(third_state['bookmarks'][tap_stream_id].keys()), set(second_state['bookmarks'][tap_stream_id].keys())
+            )
+
+            # check the table versions is the same
+            self.assertEqual(second_state['bookmarks'][tap_stream_id]['version'], third_state['bookmarks'][tap_stream_id]['version'])
+
+            # verify the method has not changed
+            self.assertEqual(third_state['bookmarks'][tap_stream_id]['last_replication_method'],
+                             second_state['bookmarks'][tap_stream_id]['last_replication_method'])
+
+            # verify the oplog_ts_time is the same, since there was no change in the collection
+            self.assertEqual(second_state['bookmarks'][tap_stream_id]['oplog_ts_time'],
+                             third_state['bookmarks'][tap_stream_id]['oplog_ts_time'])
+
+        # verify the currently syncing state is none
+        self.assertIsNone(second_state['currently_syncing'])
