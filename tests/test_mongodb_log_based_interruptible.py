@@ -62,7 +62,7 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
     def expected_row_count_2(self):
         return {
             'simple_coll_1': 3,
-            'simple_coll_2': 11
+            'simple_coll_2': 10
         }
 
     def expected_row_count_3(self):
