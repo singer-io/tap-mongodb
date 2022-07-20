@@ -14,9 +14,7 @@ import pprint
 import pdb
 import bson
 from bson import ObjectId
-import singer
 from functools import reduce
-from singer import utils, metadata
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 import decimal
 
