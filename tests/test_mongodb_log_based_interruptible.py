@@ -118,18 +118,6 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
         self.assertEqual(self.expected_check_streams(),
                          {c['tap_stream_id'] for c in found_catalogs})
 
-        for tap_stream_id in self.expected_check_streams():
-            found_stream = [c for c in found_catalogs if c['tap_stream_id'] == tap_stream_id][0]
-
-            # assert that the pks are correct
-            self.assertEqual(self.expected_pks()[found_stream['stream_name']],
-                             set(found_stream.get('metadata', {}).get('table-key-properties')))
-
-            # assert that the row counts are correct
-            self.assertEqual(self.expected_row_count_1()[found_stream['stream_name']],
-                             found_stream.get('metadata', {}).get('row-count'))
-
-
         #  -----------------------------------
         # -----------Initial Full Table Sync ---------
         #  -----------------------------------
