@@ -224,6 +224,22 @@ class MongoDBTableResetInc(TestCase):
 
                 self.assertEqual(expected_row_count, row_count)
 
+
+        # -----------------------------------
+        # ------------ Second Sync ----------
+        # -----------------------------------
+
+        # Perform state manipulation for one stream to simulate a talbe reset
+        state = menagerie.get_state(conn_id)
+        reset_stream = 'simple_db-simple_coll_int_field'
+        state['bookmarks'].pop(reset_stream)
+        menagerie.set_state(conn_id, state)
+
+        # Run sync 2
+        sync_job_name = runner.run_sync_mode(self, conn_id)
+        exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
+        menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
+
         # verify state is saved in the proper format for all streams
         state = menagerie.get_state(conn_id)
         expected_state_keys = {
@@ -262,20 +278,6 @@ class MongoDBTableResetInc(TestCase):
                 self.assertIn(replication_key_type, VALID_REPLICATION_TYPES)
 
                 self.assertIsNone(state['currently_syncing'])
-
-        # -----------------------------------
-        # ------------ Second Sync ----------
-        # -----------------------------------
-
-        # Perform state manipulation for one stream to simulate a talbe reset
-        reset_stream = 'simple_db-simple_coll_int_field'
-        state['bookmarks'].pop(reset_stream)
-        menagerie.set_state(conn_id, state)
-
-        # Run sync 2
-        sync_job_name = runner.run_sync_mode(self, conn_id)
-        exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
-        menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
 
         # verify the persisted schema was correct
         messages_by_stream = runner.get_records_from_target_output()

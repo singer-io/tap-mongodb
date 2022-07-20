@@ -158,22 +158,8 @@ class MongoDBTableResetLog(unittest.TestCase):
         for tap_stream_id in self.expected_sync_streams():
             self.assertGreaterEqual(record_count_by_stream[tap_stream_id],self.expected_row_counts()[tap_stream_id])
 
-        # Verify that we have 'initial_full_table_complete' bookmark
-        state = menagerie.get_state(conn_id)
-        first_versions = {}
-
-        for tap_stream_id in self.expected_check_streams():
-            # assert that the state has an initial_full_table_complete == True
-            self.assertTrue(state['bookmarks'][tap_stream_id]['initial_full_table_complete'])
-            # assert that there is a version bookmark in state
-            first_versions[tap_stream_id] = state['bookmarks'][tap_stream_id]['version']
-            self.assertIsNotNone(first_versions[tap_stream_id])
-            # Verify that we have a oplog_ts_time and oplog_ts_inc bookmark
-            self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_time'])
-            self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
-
-
         # manipulate state to simulate table reset
+        state = menagerie.get_state(conn_id)
         reset_stream = 'simple_db-simple_coll_2'
         state['bookmarks'].pop(reset_stream)
         menagerie.set_state(conn_id, state)
@@ -188,6 +174,20 @@ class MongoDBTableResetLog(unittest.TestCase):
 
         exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
         menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
+
+        # Verify that we have 'initial_full_table_complete' bookmark
+        state = menagerie.get_state(conn_id)
+        first_versions = {}
+
+        for tap_stream_id in self.expected_check_streams():
+            # assert that the state has an initial_full_table_complete == True
+            self.assertTrue(state['bookmarks'][tap_stream_id]['initial_full_table_complete'])
+            # assert that there is a version bookmark in state
+            first_versions[tap_stream_id] = state['bookmarks'][tap_stream_id]['version']
+            self.assertIsNotNone(first_versions[tap_stream_id])
+            # Verify that we have a oplog_ts_time and oplog_ts_inc bookmark
+            self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_time'])
+            self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
 
         # verify the persisted schema was correct
         messages_by_stream = runner.get_records_from_target_output()
