@@ -32,6 +32,9 @@ def generate_simple_coll_docs(num_docs):
     return docs
 
 class MongoDBCollectionNameRestrictions(unittest.TestCase):
+        ''' Test edge case collection name restrictions per the documentation (leading '_' or digit)
+            Reference https://jira.talendforge.org/browse/TDL-18990 for details  '''
+
     def setUp(self):
 
         ensure_environment_variables_set()

@@ -34,6 +34,9 @@ def generate_simple_coll_docs(num_docs):
     return docs
 
 class MongoDBFieldNameRestrictions(unittest.TestCase):
+    ''' Test edge case field name restrictions per the documentation (use of '.' and '$')
+        Reference https://jira.talendforge.org/browse/TDL-18990 for details  '''
+
     def setUp(self):
 
         ensure_environment_variables_set()

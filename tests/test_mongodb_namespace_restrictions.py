@@ -38,6 +38,9 @@ def generate_simple_coll_docs(num_docs):
     return docs
 
 class MongoDBNameSpanceRestrictions(unittest.TestCase):
+        ''' Test edge case namespace restrictions per the documentation (120 byte max)
+            Reference https://jira.talendforge.org/browse/TDL-18990 for details  '''
+
     def setUp(self):
 
         ensure_environment_variables_set()
