@@ -10,8 +10,13 @@ import time
 import datetime
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 import copy
+import decimal
+import bson
+from bson.decimal128 import Decimal128
 
 RECORD_COUNT = {}
+
+replication_method = ["INCREMENTAL", "FULL_TABLE", "LOG_BASED"]
 
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
@@ -35,7 +40,7 @@ def generate_docs_int_id(num_docs):
 def generate_docs_double_id():
     docs = []
     docs.append({"_id": 546.43, "string_field": random_string_generator()})
-    docs.append({"_id": 546.56, "string_field": random_string_generator()})
+    docs.append({"_id": 555.56, "string_field": random_string_generator()})
     return docs
 
 
@@ -48,8 +53,8 @@ def generate_docs_string_id():
 
 def generate_docs_binary_id():
     docs = []
-    docs.append({"_id": '10101011', "string_field": random_string_generator()})
-    docs.append({"_id": '10101000', "string_field": random_string_generator()})
+    docs.append({"_id": 0b10101011, "string_field": random_string_generator()})
+    docs.append({"_id": 0b10101000, "string_field": random_string_generator()})
     return docs
 
 
@@ -85,8 +90,8 @@ def generate_docs_64_bit_int_id():
 
 def generate_docs_128_decimal_id():
     docs = []
-    docs.append({'_id': 0.020000000000000004, 'string_field': random_string_generator()})
-    docs.append({'_id': 0.020000000000000008, 'string_field': random_string_generator()})
+    docs.append({'_id': bson.Decimal128(decimal.Decimal('1.34')), 'string_field': random_string_generator()})
+    docs.append({'_id': bson.Decimal128(decimal.Decimal('2.34')), 'string_field': random_string_generator()})
     return docs
 
 
@@ -108,7 +113,8 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             client["simple_db"]["coll_with_date_id"].insert_many(generate_docs_date_id())
             client["simple_db"]["coll_with_32_bit_int_id"].insert_many(generate_docs_32_bit_int_id())
             client["simple_db"]["coll_with_64_bit_int_id"].insert_many(generate_docs_64_bit_int_id())
-            client["simple_db"]["coll_with_128_decimal_id"].insert_many(generate_docs_128_decimal_id())
+            # cannot have decimal128 is not a supported replication key type
+            #client["simple_db"]["coll_with_128_decimal_id"].insert_many(generate_docs_128_decimal_id())
 
     def expected_check_streams(self):
         return {
@@ -119,8 +125,8 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             'simple_db-coll_with_binary_id',
             'simple_db-coll_with_date_id',
             'simple_db-coll_with_32_bit_int_id',
-            'simple_db-coll_with_64_bit_int_id',
-            'simple_db-coll_with_128_decimal_id'
+            'simple_db-coll_with_64_bit_int_id'
+            #'simple_db-coll_with_128_decimal_id'
             }
 
     def expected_pks(self):
@@ -132,8 +138,8 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             'coll_with_binary_id': {'_id'},
             'coll_with_date_id': {'_id'},
             'coll_with_32_bit_int_id': {'_id'},
-            'coll_with_64_bit_int_id': {'_id'},
-            'coll_with_128_decimal_id': {'_id'}
+            'coll_with_64_bit_int_id': {'_id'}
+            #'coll_with_128_decimal_id': {'_id'}
             }
 
     def expected_sync_streams(self):
@@ -145,13 +151,13 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             'coll_with_binary_id',
             'coll_with_date_id',
             'coll_with_32_bit_int_id',
-            'coll_with_64_bit_int_id',
-            'coll_with_128_decimal_id'
+            'coll_with_64_bit_int_id'
+            #'coll_with_128_decimal_id'
             }
 
     def expected_record_count(self):
         return {'coll_with_double_id': 2,
-                'coll_with_128_decimal_id': 2,
+                #'coll_with_128_decimal_id': 2,
                 'coll_with_32_bit_int_id': 2,
                 'coll_with_64_bit_int_id': 2,
                 'coll_with_no_id': 5,
@@ -160,6 +166,32 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
                 'coll_with_date_id': 2,
                 'coll_with_int_id': 5
                 }
+
+    def expected_pk_values(self):
+        return {
+            'coll_with_string_id': ['primary_key', 'secondary_key'],
+            'coll_with_binary_id': [171, 168],
+            #'coll_with_128_decimal_id': [decimal.Decimal('1.34'), decimal.Decimal('2.34')],
+            'coll_with_no_id': [],
+            'coll_with_64_bit_int_id': [9223372036854775800, 9223372036854775799],
+            'coll_with_int_id': [0, 1, 2, 3, 4],
+            'coll_with_32_bit_int_id': [2147483640, 2147483620],
+            'coll_with_date_id': [datetime.datetime.utcnow() - datetime.timedelta(days=1), datetime.datetime.utcnow()],
+            'coll_with_double_id': [decimal.Decimal('546.43'), decimal.Decimal('555.56')]
+            }
+
+    def expected_pk_datatype(self):
+        return {
+            'coll_with_string_id': str,
+            'coll_with_binary_id': int,
+            #'coll_with_128_decimal_id': [0.020000000000000004, 0.020000000000000008],
+            'coll_with_no_id': [],
+            'coll_with_64_bit_int_id': int,
+            'coll_with_int_id': int,
+            'coll_with_32_bit_int_id': int,
+            'coll_with_date_id': [datetime.datetime.utcnow() - datetime.timedelta(days=1), datetime.datetime.utcnow()],
+            'coll_with_double_id': decimal.Decimal
+            }
 
     def name(self):
         return "tap_tester_mongodb_id_pk_variations"
@@ -181,6 +213,18 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
                 }
 
     def test_run(self):
+        '''
+        Running the test with all the available replication methods
+        '''
+
+        for replication in replication_method:
+            if replication != 'INCREMENTAL':
+                additional_metadata = [{"breadcrumb": [], "metadata": {'replication-method': replication}}]
+            else:
+                additional_metadata = [{"breadcrumb": [], "metadata": {'replication-method': replication, 'replication-key': '_id'}}]
+            self.run_test(additional_metadata)
+
+    def run_test(self, additional_metadata):
 
         conn_id = connections.ensure_connection(self)
 
@@ -208,11 +252,13 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
         # Select simple_coll_1 and simple_coll_2 streams and add replication method metadata
         for stream_catalog in found_catalogs:
             annotated_schema = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
-            additional_md = [{"breadcrumb": [], "metadata": {'replication-method': 'FULL_TABLE'}}]
+            additional_md = additional_metadata
             selected_metadata = connections.select_catalog_and_fields_via_metadata(conn_id,
                                                                                    stream_catalog,
                                                                                    annotated_schema,
                                                                                    additional_md)
+            # verify _id is marked in metadata as table-key-property
+            self.assertEqual(stream_catalog['metadata']['table-key-properties'][0], '_id')
 
         runner.run_sync_mode(self, conn_id)
 
@@ -226,3 +272,10 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
 
         # verify if we are capturing all the data for all the streams
         self.assertEqual(record_count_by_stream, self.expected_record_count())
+
+        # verify the values of primary key and the datatype in the replicated records
+        for stream in records_by_stream.keys():
+            if stream not in ['coll_with_date_id', 'coll_with_no_id']:
+                for records in [rec['data'] for rec in records_by_stream[stream]['messages'] if rec.get('action') == 'upsert']:
+                    self.assertIn(records['_id'], self.expected_pk_values()[stream])
+                    self.assertIsInstance(records['_id'], self.expected_pk_datatype()[stream])
