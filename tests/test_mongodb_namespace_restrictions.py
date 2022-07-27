@@ -24,8 +24,8 @@ RECORD_COUNT = {}
 # Collection names.  Mongo 4.2 max supported namespace is 120 bytes = 120 characters
 coll_name_1 = ( "Collection_name_with_120_characters_012345678901234567890123456789"
                 "01234567890123456789012345678901234567890123" )
-coll_name_2 = ( "Collection_name_with_121_characters_012345678901234567890123456789"
-                "01234567890123456789012345678901234567890123" )
+coll_name_2 = ( "Collection_name_with_120_characters_123456789012345678901234567890"
+                "12345678901234567890123456789012345678901234" )
 
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
@@ -38,8 +38,8 @@ def generate_simple_coll_docs(num_docs):
     return docs
 
 class MongoDBNameSpanceRestrictions(unittest.TestCase):
-        ''' Test edge case namespace restrictions per the documentation (120 byte max)
-            Reference https://jira.talendforge.org/browse/TDL-18990 for details  '''
+    ''' Test edge case namespace restrictions per the documentation (120 byte max)
+        Reference https://jira.talendforge.org/browse/TDL-18990 for details  '''
 
     def setUp(self):
 
