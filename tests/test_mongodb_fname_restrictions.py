@@ -28,7 +28,7 @@ def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits
 def generate_simple_coll_docs(num_docs):
     docs = []
     for int_value in range(num_docs):
-        # BUG TDL-20088. Version 4.2 does not support leading "." or leading "$" in
+        # TDL-20088. Version 4.2 does not support leading "." or leading "$" in
         # field names. Also unsupported: use of field names with "." in find() queries
         docs.append({"int.field": int_value, "string$field": random_string_generator()})
     return docs
@@ -70,7 +70,6 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             'simple_coll_1': 50,
             'simple_coll_2': 100,
         }
-
 
     def expected_sync_streams(self):
         return {
@@ -119,7 +118,6 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         # assert we find the correct streams
         self.assertEqual(self.expected_check_streams(),
                          {c['tap_stream_id'] for c in found_catalogs})
-
 
 
         for tap_stream_id in self.expected_check_streams():
@@ -205,25 +203,27 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             last_index = num_records - 1
             sec_last_index = num_records -2
 
-            object_id = client['simple_db']['simple_coll_1'].find()[sec_last_index]['_id'] # int.field 48
-            changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            # Not supported in mongodb 4.2 TDL-20088
+            # object_id = client['simple_db']['simple_coll_1'].find()[sec_last_index]['_id'] # int.field 48
+            # changed_ids.add(object_id)
+            # client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
 
             object_id = client['simple_db']['simple_coll_1'].find()[last_index]['_id'] # int.field 49
             changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'string$field': "Updated_1"}})
 
             num_records = client['simple_db']['simple_coll_2'].find().count()
             last_index = num_records - 1
             sec_last_index = num_records - 2
 
-            object_id = client['simple_db']['simple_coll_2'].find()[sec_last_index]['_id'] # int.field 98
-            changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            # Not supported in mongodb 4.2 TDL-20088
+            # object_id = client['simple_db']['simple_coll_2'].find()[sec_last_index]['_id'] # int.field 98
+            # changed_ids.add(object_id)
+            # client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
 
             object_id = client['simple_db']['simple_coll_2'].find()[last_index]['_id'] # int.field 99
             changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'string$field': "Updated_2"}})
 
             # Insert two documents for each collection
             last_index = client['simple_db']['simple_coll_1'].find().count()
@@ -251,12 +251,10 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         #  -------------------------------------------
 
         # Run sync
-
         sync_job_name = runner.run_sync_mode(self, conn_id)
 
         exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
         menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
-
 
         # verify the persisted schema was correct
         messages_by_stream = runner.get_records_from_target_output()
@@ -274,12 +272,31 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         # Verify that we got at least 6 records due to changes
         # (could be more due to overlap in gte oplog clause)
         for k,v in record_count_by_stream.items():
-            self.assertGreaterEqual(v, 6)
+            self.assertGreaterEqual(v, 5)
 
         # Verify that we got 2 records with _SDC_DELETED_AT
         self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_1'] if x['data'].get('_sdc_deleted_at')]))
         self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_2'] if x['data'].get('_sdc_deleted_at')]))
         # Verify that the _id of the records sent are the same set as the
         # _ids of the documents changed
-        actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_1']]).union(set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_2']]))
+        actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_1']]).union(
+            set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_2']]))
         self.assertEqual(changed_ids, actual)
+
+        # Verify the updated record values in the db match the tap output file
+        found_id_db = client['simple_db']['simple_coll_1'].find({'string$field': "Updated_1"})[0]['_id']
+        found_id_tap = [ x['data']['_id'] for x in records_by_stream['simple_coll_1']
+                                 if x['data'].get('string$field') == 'Updated_1' ]
+        self.assertEqual(str(found_id_db), found_id_tap[0])
+
+        found_id_db = client['simple_db']['simple_coll_2'].find({'string$field': "Updated_2"})[0]['_id']
+        found_id_tap = [ x['data']['_id'] for x in records_by_stream['simple_coll_2']
+                                 if x['data'].get('string$field') == 'Updated_2' ]
+        self.assertEqual(str(found_id_db), found_id_tap[0])
+
+        # Not supported in mongodb 4.2 TDL-20088. Verify updated record values in db match tap output file
+        # found_int = -1 # one document in each colleciton was updated to have an int value of -1
+        # found_ints_1 = [x['data']['int.field'] for x in records_by_stream['simple_coll_1'] if x['data'].get('int.field')]
+        # found_ints_2 = [x['data']['int.field'] for x in records_by_stream['simple_coll_2'] if x['data'].get('int.field')]
+        # self.assertIn(found_int, found_ints_1)
+        # self.assertIn(found_int, found_ints_2)
