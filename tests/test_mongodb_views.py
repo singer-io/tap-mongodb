@@ -126,9 +126,8 @@ class MongoDBViewDiscovery(unittest.TestCase):
         found_catalogs = menagerie.get_catalogs(conn_id)
 
         # validate that the views are not discovered by the tap
-        discovered_streams = [catalog['tap_stream_id'] for catalog in found_catalogs]
-        for stream in discovered_streams:
-            self.assertIn(stream, self.expected_check_streams())
+        discovered_streams = set([catalog['tap_stream_id'] for catalog in found_catalogs])
+        self.assertEqual(discovered_streams, self.expected_check_streams())
 
         # validate the discovered streams are not views
         for stream_catalog in found_catalogs:
