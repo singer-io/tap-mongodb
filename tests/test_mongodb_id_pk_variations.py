@@ -113,8 +113,6 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             client["simple_db"]["coll_with_date_id"].insert_many(generate_docs_date_id())
             client["simple_db"]["coll_with_32_bit_int_id"].insert_many(generate_docs_32_bit_int_id())
             client["simple_db"]["coll_with_64_bit_int_id"].insert_many(generate_docs_64_bit_int_id())
-            # cannot have decimal128 is not a supported replication key type
-            #client["simple_db"]["coll_with_128_decimal_id"].insert_many(generate_docs_128_decimal_id())
 
     def expected_check_streams(self):
         return {
@@ -126,7 +124,6 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             'simple_db-coll_with_date_id',
             'simple_db-coll_with_32_bit_int_id',
             'simple_db-coll_with_64_bit_int_id'
-            #'simple_db-coll_with_128_decimal_id'
             }
 
     def expected_pks(self):
@@ -139,7 +136,6 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             'coll_with_date_id': {'_id'},
             'coll_with_32_bit_int_id': {'_id'},
             'coll_with_64_bit_int_id': {'_id'}
-            #'coll_with_128_decimal_id': {'_id'}
             }
 
     def expected_sync_streams(self):
@@ -152,12 +148,10 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
             'coll_with_date_id',
             'coll_with_32_bit_int_id',
             'coll_with_64_bit_int_id'
-            #'coll_with_128_decimal_id'
             }
 
     def expected_record_count(self):
         return {'coll_with_double_id': 2,
-                #'coll_with_128_decimal_id': 2,
                 'coll_with_32_bit_int_id': 2,
                 'coll_with_64_bit_int_id': 2,
                 'coll_with_no_id': 5,
@@ -171,7 +165,6 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
         return {
             'coll_with_string_id': ['primary_key', 'secondary_key'],
             'coll_with_binary_id': [171, 168],
-            #'coll_with_128_decimal_id': [decimal.Decimal('1.34'), decimal.Decimal('2.34')],
             'coll_with_no_id': [],
             'coll_with_64_bit_int_id': [9223372036854775800, 9223372036854775799],
             'coll_with_int_id': [0, 1, 2, 3, 4],
@@ -184,7 +177,6 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
         return {
             'coll_with_string_id': str,
             'coll_with_binary_id': int,
-            #'coll_with_128_decimal_id': [0.020000000000000004, 0.020000000000000008],
             'coll_with_no_id': [],
             'coll_with_64_bit_int_id': int,
             'coll_with_int_id': int,
