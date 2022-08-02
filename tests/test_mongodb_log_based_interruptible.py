@@ -212,7 +212,7 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
         expected_sync_streams.add('simple_coll_3')
         expected_pks = self.expected_pks()
         expected_pks['simple_coll_3'] = {'_id'}
-        expected_row_count_2['simple_coll_2'] = 5
+        expected_row_count_2['simple_coll_2'] = 4
         expected_row_count_2['simple_coll_3'] = 1
 
         check_job_name_2 = runner.run_check_mode(self, conn_id)
