@@ -39,7 +39,9 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
             client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(10))
 
             # simple_coll_2 has 20 documents
-            client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(20))
+            for i in range(20):
+                client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(1))
+
 
     def expected_check_streams(self):
         return {
@@ -61,8 +63,7 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
 
     def expected_row_count_2(self):
         return {
-            'simple_coll_1': 3,
-            'simple_coll_2': 10
+            'simple_coll_1': 3
         }
 
     def expected_row_count_3(self):
@@ -171,29 +172,25 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
 
         versions = {}
         with get_test_connection() as client:
-            rows = [x for x in client['simple_db'][table_interrupted].find(sort=[("_id", pymongo.ASCENDING)])]
-            # set last_id_fetched to middle point of table
-            last_id_fetched = str(rows[int(len(rows)/2)]['_id'])
-            last_id = {'last_id_fetched': last_id_fetched}
-            max_id_value = str(rows[-1]['_id'])
-            max_id = {'max_id_value': max_id_value}
-            del interrupted_state['bookmarks']['simple_db-'+table_interrupted]['initial_full_table_complete']
+            # From the sampled timestamp in oplog, fetch one timestamp which is closer to the max
+            docs = list(client.local.oplog.rs.find(sort=[('$natural', pymongo.DESCENDING)]).limit(20))
+            ts_to_update = docs[5]['ts']
+
+            # converting the bson.timestamp to int, which is needed to update the oplog_ts_time
+            updated_ts = str(ts_to_update)
+            result = updated_ts[updated_ts.find('(')+1:updated_ts.find(')')]
+            final_result = result.split(',')
+            final_result = list(map(int, final_result))
             version = int(time.time() * 1000)
-            # add the id bookmarks
-            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update(max_id)
-            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'max_id_type': 'ObjectId'})
-            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'last_id_fetched_type': 'ObjectId'})
-            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update(last_id)
+            # # add the ts bookmarks
+            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'oplog_ts_time': final_result[0]})
+            interrupted_state['bookmarks']['simple_db-'+table_interrupted].update({'oplog_ts_inc': final_result[1]})
             interrupted_state['currently_syncing'] = 'simple_db-'+table_interrupted
             versions[tap_stream_id] = version
 
             # Insert Update Delete few records in the collection 1
-
             doc_to_update_1 = client["simple_db"]["simple_coll_1"].find_one()
             client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": doc_to_update_1["_id"]}, {"$set": {"int_field": 999}})
-
-            # doc_to_update_2 = client["simple_db"]["simple_coll_2"].find_one()
-            # client["simple_db"]["simple_coll_2"].find_one_and_update({"_id": doc_to_update_2["_id"]}, {"$set": {"int_field": 888}})
 
             doc_to_delete_1 = client["simple_db"]["simple_coll_1"].find_one({"int_field": 2})
             client["simple_db"]["simple_coll_1"].delete_one({"_id": doc_to_delete_1["_id"]})
@@ -211,10 +208,11 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
         ## update the expectations ##
 
         expected_sync_streams = self.expected_sync_streams()
+        expected_row_count_2 = self.expected_row_count_2()
         expected_sync_streams.add('simple_coll_3')
         expected_pks = self.expected_pks()
         expected_pks['simple_coll_3'] = {'_id'}
-        expected_row_count_2 = self.expected_row_count_2()
+        expected_row_count_2['simple_coll_2'] = 5
         expected_row_count_2['simple_coll_3'] = 1
 
         check_job_name_2 = runner.run_check_mode(self, conn_id)
@@ -248,20 +246,10 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
                                                                      expected_pks)
 
         # Verify the record count for the 2nd sync
-        for tap_stream_id in self.expected_sync_streams():
+        for tap_stream_id in expected_sync_streams:
             self.assertGreaterEqual(record_count_by_stream_2[tap_stream_id], expected_row_count_2[tap_stream_id])
 
         second_state = menagerie.get_state(conn_id)
-
-        # _id of the first record sync'd for each stream is the bookmarked
-        # last_id_fetched from the interrupted_state passed to the tap
-        self.assertEqual(records_by_stream_2['simple_coll_2']['messages'][0]['data']['_id'],
-                         interrupted_state['bookmarks']['simple_db-simple_coll_2']['last_id_fetched'])
-
-        # _id of the last record sync'd for each stream is the bookmarked
-        # max_id_value from the interrupted_state passed to the tap
-        self.assertEqual(records_by_stream_2['simple_coll_2']['messages'][-1]['data']['_id'],
-                         interrupted_state['bookmarks']['simple_db-simple_coll_2']['max_id_value'])
 
         # verify the second sync bookmarks matches our expectatinos
         for tap_stream_id in initial_state['bookmarks'].keys():
@@ -302,10 +290,10 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
                                                                      expected_pks)
 
         expected_row_count_3 = self.expected_row_count_3()
-        expected_row_count_3['simple_coll_3'] = 0
+        expected_row_count_3['simple_coll_3'] = 1
 
         # Verify the record count for the 3rd sync
-        for tap_stream_id in self.expected_sync_streams():
+        for tap_stream_id in expected_sync_streams:
             self.assertEqual(record_count_by_stream_3[tap_stream_id], expected_row_count_3[tap_stream_id])
 
         # verify the only record replicated is the last inserted record in the collection 2
