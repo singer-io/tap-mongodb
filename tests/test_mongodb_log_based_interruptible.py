@@ -249,6 +249,9 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
         for tap_stream_id in expected_sync_streams:
             self.assertGreaterEqual(record_count_by_stream_2[tap_stream_id], expected_row_count_2[tap_stream_id])
 
+        # validate that the second sync for interrupted collection replicates less documents than initial sync
+        self.assertGreater(record_count_by_stream[table_interrupted], record_count_by_stream_2[table_interrupted])
+
         second_state = menagerie.get_state(conn_id)
 
         # verify the second sync bookmarks matches our expectatinos
