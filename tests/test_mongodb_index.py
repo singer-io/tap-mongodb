@@ -15,10 +15,7 @@ import pdb
 import bson
 from bson import ObjectId
 from functools import reduce
-from pymongo import MongoClient
 from pymongo import ASCENDING
-from pymongo import DESCENDING
-from pymongo import TEXT
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 import decimal
 
@@ -31,78 +28,9 @@ def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits
 
 def generate_simple_coll_docs(num_docs):
     docs = []
+    populated_string_fields = {f"string_field_{i}": random_string_generator() for i in range(1, 64)}
     for int_value in range(num_docs):
-        docs.append({"int_field": int_value,
-                     "string_field": random_string_generator(),
-                     "string_field_02": random_string_generator(),
-                     "string_field_03": random_string_generator(),
-                     "string_field_04": random_string_generator(),
-                     "string_field_05": random_string_generator(),
-                     "string_field_06": random_string_generator(),
-                     "string_field_07": random_string_generator(),
-                     "string_field_08": random_string_generator(),
-                     "string_field_09": random_string_generator(),
-                     "string_field_10": random_string_generator(),
-                     "string_field_11": random_string_generator(),
-                     "string_field_12": random_string_generator(),
-                     "string_field_13": random_string_generator(),
-                     "string_field_14": random_string_generator(),
-                     "string_field_15": random_string_generator(),
-                     "string_field_16": random_string_generator(),
-                     "string_field_17": random_string_generator(),
-                     "string_field_18": random_string_generator(),
-                     "string_field_19": random_string_generator(),
-                     "string_field_20": random_string_generator(),
-                     "string_field_21": random_string_generator(),
-                     "string_field_22": random_string_generator(),
-                     "string_field_23": random_string_generator(),
-                     "string_field_24": random_string_generator(),
-                     "string_field_25": random_string_generator(),
-                     "string_field_26": random_string_generator(),
-                     "string_field_27": random_string_generator(),
-                     "string_field_28": random_string_generator(),
-                     "string_field_29": random_string_generator(),
-                     "string_field_30": random_string_generator(),
-                     "string_field_31": random_string_generator(),
-                     "string_field_32": random_string_generator(),
-                     "string_field_33": random_string_generator(),
-                     "string_field_34": random_string_generator(),
-                     "string_field_35": random_string_generator(),
-                     "string_field_36": random_string_generator(),
-                     "string_field_37": random_string_generator(),
-                     "string_field_38": random_string_generator(),
-                     "string_field_39": random_string_generator(),
-                     "string_field_40": random_string_generator(),
-                     "string_field_41": random_string_generator(),
-                     "string_field_42": random_string_generator(),
-                     "string_field_43": random_string_generator(),
-                     "string_field_44": random_string_generator(),
-                     "string_field_45": random_string_generator(),
-                     "string_field_46": random_string_generator(),
-                     "string_field_47": random_string_generator(),
-                     "string_field_48": random_string_generator(),
-                     "string_field_49": random_string_generator(),
-                     "string_field_50": random_string_generator(),
-                     "string_field_51": random_string_generator(),
-                     "string_field_52": random_string_generator(),
-                     "string_field_53": random_string_generator(),
-                     "string_field_54": random_string_generator(),
-                     "string_field_55": random_string_generator(),
-                     "string_field_56": random_string_generator(),
-                     "string_field_57": random_string_generator(),
-                     "string_field_58": random_string_generator(),
-                     "string_field_59": random_string_generator(),
-                     "string_field_60": random_string_generator(),
-                     "string_field_61": random_string_generator(),
-                     "string_field_62": random_string_generator(),
-                     "string_field_63": random_string_generator(),
-                     "string_field_64": random_string_generator(),
-                     "string_field_65": random_string_generator(),
-                     "string_field_66": random_string_generator(),
-                     "string_field_67": random_string_generator(),
-                     "string_field_68": random_string_generator(),
-                     "string_field_69": random_string_generator()
-                     })
+        docs.append({"int_field": int_value, **populated_string_fields})
     return docs
 
 class MongoDBOplog(unittest.TestCase):
@@ -170,7 +98,7 @@ class MongoDBOplog(unittest.TestCase):
         }
 
     def name(self):
-        return "tap_tester_mongodb_oplog"
+        return "tap_tester_mongodb_index"
 
     def tap_name(self):
         return "tap-mongodb"
@@ -189,70 +117,9 @@ class MongoDBOplog(unittest.TestCase):
         }
 
     def expected_string_fields(self):
-        return {"string_field",
-                "string_field_02",
-                "string_field_03",
-                "string_field_04",
-                "string_field_05",
-                "string_field_06",
-                "string_field_07",
-                "string_field_08",
-                "string_field_09",
-                "string_field_10",
-                "string_field_11",
-                "string_field_12",
-                "string_field_13",
-                "string_field_14",
-                "string_field_15",
-                "string_field_16",
-                "string_field_17",
-                "string_field_18",
-                "string_field_19",
-                "string_field_20",
-                "string_field_21",
-                "string_field_22",
-                "string_field_23",
-                "string_field_24",
-                "string_field_25",
-                "string_field_26",
-                "string_field_27",
-                "string_field_28",
-                "string_field_29",
-                "string_field_30",
-                "string_field_31",
-                "string_field_32",
-                "string_field_33",
-                "string_field_34",
-                "string_field_35",
-                "string_field_36",
-                "string_field_37",
-                "string_field_38",
-                "string_field_39",
-                "string_field_40",
-                "string_field_41",
-                "string_field_42",
-                "string_field_43",
-                "string_field_44",
-                "string_field_45",
-                "string_field_46",
-                "string_field_47",
-                "string_field_48",
-                "string_field_49",
-                "string_field_50",
-                "string_field_51",
-                "string_field_52",
-                "string_field_53",
-                "string_field_54",
-                "string_field_55",
-                "string_field_56",
-                "string_field_57",
-                "string_field_58",
-                "string_field_59",
-                "string_field_60",
-                "string_field_61",
-                "string_field_62",
-                "string_field_63" # Max = 64.  63 strings + _id
-        }
+        # Max index count = 64.  63 strings + '_id'
+        return {f"string_field_{i}" for i in range(1, 64)}
+
 
     def test_run(self):
 
