@@ -64,13 +64,8 @@ jobs:
           command: |
             apt update
             apt install -y curl
-      - slack/status:
-          channel: 'tier-1-taps-monitor'
-          mentions: "${CIRCLE_USERNAME}"
-          fail_only: true
+      - slack/notify-on-failure:
           only_for_branches: master
-          failure_message: |
-            :red_circle: ${CIRCLE_JOB} failed!
 
 workflows:
   version: 2
