@@ -56,6 +56,8 @@ jobs:
           name: 'Integration Tests'
           command: |
             source tap-tester.env
+            mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
+            export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
             run-test --tap=tap-mongodb tests
@@ -66,6 +68,8 @@ jobs:
             apt install -y curl
       - slack/notify-on-failure:
           only_for_branches: master
+      - store_artifacts:
+          path: /tmp/tap-mongodb
 
 workflows:
   version: 2
