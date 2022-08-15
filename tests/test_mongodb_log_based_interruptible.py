@@ -97,6 +97,7 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
                 'database': os.getenv('TAP_MONGODB_DBNAME')
                 }
 
+    # Spike to investigate 'oplog_ts_inc' - https://jira.talendforge.org/browse/TDL-20333
     @unittest.skip("Test is unstable")
     def test_run(self):
 
@@ -179,8 +180,6 @@ class MongoDBLogBasedInterruptible(unittest.TestCase):
 
             # converting the bson.timestamp to int, which is needed to update the oplog_ts_time
             updated_ts = str(ts_to_update)
-            import ipdb; ipdb.set_trace()
-            1+1
             result = updated_ts[updated_ts.find('(')+1:updated_ts.find(')')]
             final_result = result.split(',')
             final_result = list(map(int, final_result))
