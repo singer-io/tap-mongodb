@@ -132,6 +132,9 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
         'ns': {'$eq' : '{}.{}'.format(database_name, collection_name)}
     }
 
+    if (max_oplog_ts is not None):
+        oplog_query['ts']['$lte'] = max_oplog_ts
+
     projection = transform_projection(stream_projection)
 
     oplog_replay = stream_projection is None
@@ -163,6 +166,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
 
             if row_op == 'i':
                 write_schema(schema, row['o'], stream)
+
                 record_message = common.row_to_singer_record(stream,
                                                              row['o'],
                                                              version,

@@ -1,0 +1,59 @@
+{
+    "streams": [
+          {
+        "table_name": "Shipment",
+        "stream": "Shipment",
+        "metadata": [
+          {
+            "breadcrumb": [],
+            "metadata": {
+              "selected": true,
+              "replication-method": "LOG_BASED",
+              "tap-mongodb.projection": "{\"destination.data\":0,\"destination.destinationContact.attributes\":0,\"transferredItems.items.data\":0,\"reasignedItems.items.data\":0,\"customer.data\":0,\"reassignedItems.data\":0,\"items.data\":0,\"items.attributes\":0,\"canceledItems.modifiedReason.attributes\":0,\"canceledItems.data\":0,\"canceledItems.attributes\":0,\"rejectedItems.modifiedReason.attributes\":0,\"rejectedItems.data\":0,\"rejectedItems.attributes\":0,\"workflowState.taskList\":0,\"workflowState.attributes\":0,\"changeMessages\":0,\"attributes\":0,\"data\":0}",
+  
+              "table-key-properties": ["_id"],
+              "database-name": "fulfillment",
+              "row-count": 152644,
+              "is-view": false,
+              "valid-replication-keys": [
+                "orderId",
+                "originalOrderId",
+                "customerAccountId",
+                "tenantId",
+                "siteId",
+                "locationCode",
+                "workflowState.processInstanceId",
+                "packages._id",
+                "LastModifiedDate",
+                "fulfillmentLocationCode",
+                "lastModifiedDate",
+                "externalOrderId",
+                "_id",
+                "auditInfo.createDate",
+                "auditInfo.updateDate",
+                "items.auditInfo.updateDate",
+                "items.auditInfo.createDate",
+                "canceledItems.auditInfo.updateDate",
+                "canceledItems.auditInfo.createDate",
+                "reassignedItems.auditInfo.updateDate",
+                "reassignedItems.auditInfo.createDate",
+                "rejectedItems.auditInfo.updateDate",
+                "rejectedItems.auditInfo.createDate",
+                "transferredItems.auditInfo.updateDate",
+                "transferredItems.auditInfo.createDate",
+                "packages.auditInfo.updateDate",
+                "packages.auditInfo.createDate",
+                "workflowState.auditInfo.updateDate",
+                "workflowState.auditInfo.createDate"
+              ]
+            }
+          }
+        ],
+        "tap_stream_id": "fulfillment-Shipment",
+        "schema": {
+          "type": "object"
+        }
+      }
+    ]
+  }
+  

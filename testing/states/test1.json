@@ -1,0 +1,13 @@
+{
+  "bookmarks": {
+    
+    "fulfillment-Shipment": {
+      "last_replication_method": "LOG_BASED",
+      "oplog_ts_time": 1666265712,
+      "oplog_ts_inc": 4,
+      "version": 1661783871452,
+      "initial_full_table_complete": true
+    }
+  },
+  "currently_syncing": null
+}
