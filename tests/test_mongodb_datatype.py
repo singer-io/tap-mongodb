@@ -51,7 +51,7 @@ class MongoDBDatatype(unittest.TestCase):
 
             datatype_doc = {
                 "double_field": 4.3,
-                "string_field": "a sample string",
+                "string_field": "José \xe9",
                 "object_field" : {
                     "obj_field_1_key": "obj_field_1_val",
                     "obj_field_2_key": "obj_field_2_val"
