@@ -372,7 +372,10 @@ def main_impl():
     if not verify_mode and use_ssl:
         connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
 
-    client = pymongo.MongoClient(**connection_params)
+    # unicode_decode_error_handler will replace non-utf8 chars that cause errors
+    # when set to the default ('strict')
+    # PyMongo docs: https://api.mongodb.com/python/3.1/api/bson/codec_options.html
+    client = pymongo.MongoClient(**connection_params, unicode_decode_error_handler='replace')
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
