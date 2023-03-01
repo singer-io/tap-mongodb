@@ -6,7 +6,7 @@ jobs:
   build:
     docker:
       - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
-      - image: mongo:5.0.0-bionic
+      - image: mongo:5.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
