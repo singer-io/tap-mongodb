@@ -10,9 +10,8 @@ jobs:
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
-        command: |
-          chmod 400 /root/project/bin/keyfile && chown $USER:$USER /root/project/bin/keyfile && mongod --keyFile /root/project/bin/keyfile --replSet rs0
-      steps:
+        command: chmod 400 /root/project/bin/keyfile && chown $USER:$USER /root/project/bin/keyfile && mongod --keyFile /root/project/bin/keyfile --replSet rs0
+    steps:
       - checkout
       - run:
           name: 'Install Dockerize'
