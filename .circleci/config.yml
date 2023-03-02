@@ -6,11 +6,11 @@ jobs:
   build:
     docker:
       - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
-      - image: mongo:4.4.0-bionic
+0      - image: 5.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
-        command: [mongod, --replSet, rs0]
+        command: [mongod, --keyFile, /root/project/tap-mongodb/bin/keyfile, --replSet, rs0]
     steps:
       - checkout
       - run:
@@ -31,8 +31,8 @@ jobs:
             wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
             echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
             apt-get update
-            apt-get install -y libcurl3 mongodb-org-shell=4.4.0
-            mongo -u  $TAP_MONGODB_USER -p $TAP_MONGODB_PASSWORD --authenticationDatabase admin --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
+            apt-get install -y libcurl3 mongodb-org-shell mongodb-mongosh
+            mongosh -u  $TAP_MONGODB_USER -p $TAP_MONGODB_PASSWORD --authenticationDatabase admin --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
       - run:
           name: 'Setup virtual env'
           command: |
