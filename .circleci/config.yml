@@ -30,7 +30,7 @@ jobs:
             wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
             echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list
             apt-get update
-            apt-get install -y libcurl3 mongodb-org-shell mongodb-mongosh
+            apt-get install -y mongodb-mongosh
             chmod 400 /root/project/bin/keyfile
             chown $USER:$USER /root/project/bin/keyfile
             mongod --auth --keyFile /root/project/bin/keyfile --replSet rs0
