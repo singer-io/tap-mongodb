@@ -10,7 +10,7 @@ jobs:
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
-        command: [mongod, --keyFile, /root/project/tap-mongodb/bin/keyfile, --replSet, rs0]
+        command: [mongod, --keyFile, /root/project/bin/keyfile, --replSet, rs0]
     steps:
       - checkout
       - run:
