@@ -13,7 +13,6 @@ jobs:
         command: |
           chmod 400 /root/project/bin/keyfile
           chown $USER:$USER /root/project/bin/keyfile
-          mongod --keyFile /root/project/bin/keyfile --replSet rs0
     steps:
       - checkout
       - run:
@@ -35,6 +34,7 @@ jobs:
             echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
             apt-get update
             apt-get install -y libcurl3 mongodb-org-shell mongodb-mongosh
+            mongod --auth --keyFile /root/project/bin/keyfile --replSet rs0
             mongosh -u  $TAP_MONGODB_USER -p $TAP_MONGODB_PASSWORD --authenticationDatabase admin --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
       - run:
           name: 'Setup virtual env'
