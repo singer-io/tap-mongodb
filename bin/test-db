@@ -7,14 +7,32 @@ import time
 from argparse import RawTextHelpFormatter
 
 image_name = "mongo"
-image_tag = "4.2.0-bionic"
+image_tag = "5.0"
 
 def start_container(name):
+    dockerfile = f"""
+     FROM {image_name}:{image_tag}
+     COPY keyfile /opt/mongo/keyfile
+     RUN sudo chmod 400 /opt/mongo/keyfile && \
+         sudo chown mongodb:mongodb /opt/mongo/keyfile && \
+         -e "MONGO_INITDB_ROOT_USERNAME={os.getenv('TAP_MONGODB_USER')}" -e "MONGO_INITDB_ROOT_PASSWORD={os.getenv('TAP_MONGODB_PASSWORD')}" \
+        -p {2}:{2} --name {3} \
+        -d {4}:{5} 
+        mongod --keyFile /opt/mongo/keyfile --replSet rs0  
+ 
+     """.format(os.getenv('TAP_MONGODB_USER'),
+               os.getenv('TAP_MONGODB_PASSWORD'),
+               os.getenv('TAP_MONGODB_PORT'),
+               name,
+               image_name,
+               image_tag)
+
 
     START_COMMAND = """
-    sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}"\
+    sudo docker run --volume /opt/code/tap-mongodb/bin:/key -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}" \
         -p {2}:{2} --name {3} \
-        -d {4}:{5} --replSet rs0
+        -d {4}:{5} 
+         
     """.format(os.getenv('TAP_MONGODB_USER'),
                os.getenv('TAP_MONGODB_PASSWORD'),
                os.getenv('TAP_MONGODB_PORT'),
@@ -33,12 +51,14 @@ def start_container(name):
     time.sleep(5)
 
     ip_addr = get_ip_addr(name)
+    #docker exec mongo1 --volume /opt/code/tap-mongodb/bin:/etc --rm  mongo:{} mongod --keyFile /etc/keyfile --replSet rs0 --bind_ip {} --serviceUser {}
     CONFIGURE_COMMAND = """
-    docker run --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
-    """.format(ip_addr,
-               os.getenv('TAP_MONGODB_USER'),
-               os.getenv('TAP_MONGODB_PASSWORD'),
-               '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
+    docker run --volume /opt/code/tap-mongodb/bin:/key --rm mongo:5.0 mongod --keyFile /key/keyfile --replSet rs0 
+    """.format()#image_tag,)
+               #ip_addr)
+               #os.getenv('TAP_MONGODB_USER'))
+               #os.getenv('TAP_MONGODB_PASSWORD')
+               #'\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
     print(CONFIGURE_COMMAND)
     proc = subprocess.run(CONFIGURE_COMMAND, shell=True)
     if proc.returncode != 0:
