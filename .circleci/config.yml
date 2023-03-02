@@ -27,8 +27,8 @@ jobs:
           command: |
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
             source tap-tester.env
-            wget -qO - https://www.mongodb.org/static/pgp/server-4.4.asc | apt-key add -
-            echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu xenial/mongodb-org/4.4 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-4.4.list
+            wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
+            echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-5.0.list
             apt-get update
             apt-get install -y libcurl3 mongodb-org-shell mongodb-mongosh
             chmod 400 /root/project/bin/keyfile
