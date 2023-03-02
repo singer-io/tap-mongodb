@@ -7,7 +7,12 @@ jobs:
     docker:
       - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
       - image: "mongo:5.0"
-    steps:
+        environment:
+          MONGO_INITDB_ROOT_USERNAME: dev
+          MONGO_INITDB_ROOT_PASSWORD: Password1
+        command: |
+          chmod 400 /root/project/bin/keyfile && chown $USER:$USER /root/project/bin/keyfile && mongod --keyFile /root/project/bin/keyfile --replSet rs0
+      steps:
       - checkout
       - run:
           name: 'Install Dockerize'
