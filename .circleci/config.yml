@@ -27,6 +27,7 @@ jobs:
       - run:
           name: 'Setup Mongo'
           command: |
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
             echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable" | tee /etc/apt/sources.list.d/docker.list
             apt update
             apt install docker-ce
