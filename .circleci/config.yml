@@ -10,7 +10,7 @@ jobs:
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
-        command: mkdir -p /opt/mongo && openssl rand -base64 756 > /opt/mongo/keyfile && chmod 400 /opt/mongo/keyfile && chown mongodb:mongodb /opt/mongo/keyfile && mongod --auth --keyFile /opt/mongo/keyfile --replSet rs0
+        command: ["mkdir -p /opt/mongo", "openssl rand -base64 756 > /opt/mongo/keyfile", "chmod 400 /opt/mongo/keyfile", "chown mongodb:mongodb /opt/mongo/keyfile", "mongod --auth --keyFile /opt/mongo/keyfile --replSet rs0"]
     steps:
       - checkout
       - run:
