@@ -6,11 +6,11 @@ jobs:
   build:
     docker:
       - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
-      - image: "mongo:5.0"
+      - image: singerio/mongo:5.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
-        command: ["mkdir -p /opt/mongo", "openssl rand -base64 756 > /opt/mongo/keyfile", "chmod 400 /opt/mongo/keyfile", "chown mongodb:mongodb /opt/mongo/keyfile", "mongod --auth --keyFile /opt/mongo/keyfile --replSet rs0"]
+        command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
     steps:
       - checkout
       - run:
@@ -28,16 +28,13 @@ jobs:
       - run:
           name: 'Setup Mongo'
           command: |
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-            echo "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable" | tee /etc/apt/sources.list.d/docker.list
-            apt update
-            apt install -y docker-ce
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
             source tap-tester.env
             wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
             echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" | tee /etc/apt/sources.list.d/mongodb-org-5.0.list
             apt-get update
             apt-get install -y mongodb-org-shell mongodb-mongosh mongodb-org
+            mongosh -u $TAP_MONGODB_USER -p $TAP_MONGODB_PASSWORD --authenticationDatabase admin --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
       - run:
           name: 'Setup virtual env'
           command: |
