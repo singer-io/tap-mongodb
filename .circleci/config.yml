@@ -6,7 +6,7 @@ executors:
   tap_tester_mongo_4_2:
     docker:
       - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester
-      - image: mongo/4.2-bionic
+      - image: mongo:4.2-bionic
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
