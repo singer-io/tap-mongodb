@@ -6,25 +6,13 @@ import subprocess
 import time
 from argparse import RawTextHelpFormatter
 
-image_name = "mongo"
-#image_tag = "4.4.0-bionic"
-image_tag = "5.0"
-def start_container(name):
-    # Use dockerfile to add keyfile to docker container during build
-    dockerfile = """
-    FROM {}:{}
-    COPY keyfile /opt/mongo/keyfile
-    RUN chmod 400 /opt/mongo/keyfile && \
-        chown mongodb:mongodb /opt/mongo/keyfile
-    """.format(image_name,
-               image_tag)
+# singerio images have required keyfile
+image_name = "singerio/mongo"
+image_tag = "4.2-bionic"
+# image_tag = "4.4-bionic"
+# image_tag = "5.0"
 
-    # Use STDIN to build dockerfile  https://docs.docker.com/engine/reference/commandline/build/#file
-    BUILD_COMMAND = "echo '{}' | sudo docker build -f - -t {}:{} /opt/code/tap-mongodb/bin".format(dockerfile,
-                                                                                                   image_name,
-                                                                                                   image_tag)
-    print("Building docker file using: {}".format(BUILD_COMMAND))
-    proc = subprocess.run(BUILD_COMMAND, shell=True)
+def start_container(name):
 
     START_COMMAND = """
     sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}" \
