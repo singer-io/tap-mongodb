@@ -225,10 +225,15 @@ workflows:
           context:
             - circleci-user
             - tier-1-tap-user
+          requires:
+            - build_mongo_4_2
       - build_mongo_5_0:
           context:
             - circleci-user
             - tier-1-tap-user
+          requires:
+            - build_mongo_4_2
+            - build_mongo_5_0
 build_daily:
     <<: *commit_jobs
     triggers:
