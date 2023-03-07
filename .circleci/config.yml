@@ -233,7 +233,7 @@ workflows:
             - tier-1-tap-user
           requires:
             - build_mongo_4_2
-            - build_mongo_5_0
+            - build_mongo_4_4
 build_daily:
     <<: *commit_jobs
     triggers:
