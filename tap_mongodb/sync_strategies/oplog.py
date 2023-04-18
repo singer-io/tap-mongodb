@@ -71,7 +71,7 @@ def transform_projection(projection):
         return new_projection
 
     temp_projection = {k:v for k, v in projection.items() if k != '_id'}
-    is_whitelist = sum([v for k, v in temp_projection.items()]) > 0
+    is_whitelist = sum([int(bool(v)) for k, v in temp_projection.items()]) > 0
 
     # If only '_id' is included in projection
     if not temp_projection:
