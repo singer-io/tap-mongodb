@@ -80,8 +80,8 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            echo $(circleci tests glob "test/*{data,interrupt,open,restrict,view}*")
-            circleci tests glob "test/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
+            echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
@@ -148,8 +148,8 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            echo $(circleci tests glob "test/*{data,interrupt,open,restrict,view}*")
-            circleci tests glob "test/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
+            echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
@@ -216,8 +216,8 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            echo $(circleci tests glob "test/*{data,interrupt,open,restrict,view}*")
-            circleci tests glob "test/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
+            echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
