@@ -85,7 +85,6 @@ jobs:
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
-                << parameters.test_command >>
                 run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
               done
             fi
@@ -154,7 +153,6 @@ jobs:
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
-                << parameters.test_command >>
                 run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
               done
             fi
@@ -223,7 +221,6 @@ jobs:
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
-                << parameters.test_command >>
                 run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
               done
             fi
