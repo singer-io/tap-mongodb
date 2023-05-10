@@ -80,7 +80,15 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            run-test --tap=tap-mongodb tests
+            echo $(circleci tests glob "test/{data,interrupt,open,restrict,view}")
+            circleci tests glob "test/{data,interrupt,open,restrict,view}" | circleci tests split > ./tests-to-run
+            if [ -s ./tests-to-run ]; then
+              for test_file in $(cat ./tests-to-run)
+              do
+                << parameters.test_command >>
+                run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
+              done
+            fi
       - run:
           name: 'Get Curl'
           command: |
@@ -141,7 +149,15 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            run-test --tap=tap-mongodb tests
+            echo $(circleci tests glob "test/{data,interrupt,open,restrict,view}")
+            circleci tests glob "test/{data,interrupt,open,restrict,view}" | circleci tests split > ./tests-to-run
+            if [ -s ./tests-to-run ]; then
+              for test_file in $(cat ./tests-to-run)
+              do
+                << parameters.test_command >>
+                run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
+              done
+            fi
       - run:
           name: 'Get Curl'
           command: |
@@ -202,7 +218,15 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            run-test --tap=tap-mongodb tests
+            echo $(circleci tests glob "test/{data,interrupt,open,restrict,view}")
+            circleci tests glob "test/{data,interrupt,open,restrict,view}" | circleci tests split > ./tests-to-run
+            if [ -s ./tests-to-run ]; then
+              for test_file in $(cat ./tests-to-run)
+              do
+                << parameters.test_command >>
+                run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
+              done
+            fi
       - run:
           name: 'Get Curl'
           command: |
