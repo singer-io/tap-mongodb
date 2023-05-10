@@ -85,7 +85,7 @@ jobs:
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
-                run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
+                run-test --tap=tap-mongodb $test_file
               done
             fi
       - run:
@@ -221,7 +221,7 @@ jobs:
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
-                run-test --tap=bin/${CIRCLE_PROJECT_REPONAME} $test_file
+                run-test --tap=tap-mongodb $test_file
               done
             fi
       - run:
