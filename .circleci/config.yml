@@ -80,8 +80,6 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            echo $(circleci tests glob "tests/*{data,view}*")
-            circleci tests glob "tests/*{data,view}*" | circleci tests split
             run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
