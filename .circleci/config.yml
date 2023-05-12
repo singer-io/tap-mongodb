@@ -147,14 +147,19 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
-            echo "Tests running in this batch: $selected_tests"
-            circleci tests split $selected_tests > ./tests-to-run
+            # selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            # echo "Tests running in this batch:\n $selected_tests"
+            # circleci tests split $selected_tests > ./tests-to-run
+            echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
                 run-test --tap=tap-mongodb $test_file
               done
+            else
+              echo "ERROR - File not found or file is empty!" 1>&2
+              exit 5
             fi
       - run:
           name: 'Get Curl'
