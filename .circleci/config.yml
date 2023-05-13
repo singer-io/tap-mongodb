@@ -226,7 +226,7 @@ jobs:
             pip install pymongo==3.12.3
             echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
             circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
-            if [ -s ./tests-to-run1 ]; then
+            if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
                 run-test --tap=tap-mongodb $test_file
