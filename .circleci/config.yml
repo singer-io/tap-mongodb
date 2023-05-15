@@ -148,7 +148,7 @@ jobs:
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
             selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
-            echo -e "Tests running in this batch:\n $selected_tests"
+            echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
@@ -223,7 +223,7 @@ jobs:
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
             selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
-            echo -e "Tests running in this batch:\n $selected_tests"
+            echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
@@ -248,16 +248,16 @@ workflows:
   version: 2
   commit: &commit_jobs
     jobs:
-      # - build:
-      #     context:
-      #       - circleci-user
-      #       - tier-1-tap-user
+      - build:
+          context:
+            - circleci-user
+            - tier-1-tap-user
       - build_mongo_4_4:
           context:
             - circleci-user
             - tier-1-tap-user
-          # requires:
-          #   - build
+          requires:
+            - build
       - build_mongo_5_0:
           context:
             - circleci-user
