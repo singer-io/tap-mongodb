@@ -153,8 +153,10 @@ jobs:
             echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
             circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
             if [ -s ./tests-to-run ]; then
+              echo $(cat ./tests-to-run)
               for test_file in $(cat ./tests-to-run)
               do
+                echo $test_file
                 run-test --tap=tap-mongodb $test_file
               done
             else
@@ -249,16 +251,16 @@ workflows:
   version: 2
   commit: &commit_jobs
     jobs:
-      - build:
-          context:
-            - circleci-user
-            - tier-1-tap-user
+      # - build:
+      #     context:
+      #       - circleci-user
+      #       - tier-1-tap-user
       - build_mongo_4_4:
           context:
             - circleci-user
             - tier-1-tap-user
           requires:
-            - build
+            # - build
       - build_mongo_5_0:
           context:
             - circleci-user
