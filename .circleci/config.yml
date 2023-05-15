@@ -148,16 +148,11 @@ jobs:
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
             selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
-            echo "Tests running in this batch:\n $selected_tests"
-            # circleci tests split $selected_tests > ./tests-to-run
+            echo -e "Tests running in this batch:\n $selected_tests"
             echo $selected_tests > ./tests-to-run
-            # echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
-            # circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
             if [ -s ./tests-to-run ]; then
-              echo $(cat ./tests-to-run)
               for test_file in $(cat ./tests-to-run)
               do
-                echo $test_file
                 run-test --tap=tap-mongodb $test_file
               done
             else
@@ -227,8 +222,9 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==3.12.3
-            echo $(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
-            circleci tests glob "tests/*{data,interrupt,open,restrict,view}*" | circleci tests split > ./tests-to-run
+            selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            echo -e "Tests running in this batch:\n $selected_tests"
+            echo $selected_tests > ./tests-to-run
             if [ -s ./tests-to-run ]; then
               for test_file in $(cat ./tests-to-run)
               do
