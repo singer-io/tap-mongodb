@@ -1,24 +1,20 @@
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
-import os
-import datetime
-import unittest
-import datetime
-import pymongo
-import string
-import random
-import time
-import re
-import pprint
-import pdb
-import bson
-import singer
 import base64
-from functools import reduce
-from singer import utils, metadata
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+import bson
+import datetime
 import decimal
+import os
+import pdb
+import pprint
+import pymongo
+import random
+import re
+import string
+import time
+import unittest
+from functools import reduce
+
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from tap_tester import connections, menagerie, runner, LOGGER
 
 
 RECORD_COUNT = {}
