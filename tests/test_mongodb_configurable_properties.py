@@ -1,13 +1,10 @@
-import tap_tester.connections as connections
-import tap_tester.menagerie   as menagerie
-import tap_tester.runner      as runner
 import os
-import unittest
-import string
 import random
-import ssl
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+import string
+import unittest
 
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from tap_tester import connections, menagerie, runner
 
 RECORD_COUNT = {}
 

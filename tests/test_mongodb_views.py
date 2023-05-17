@@ -1,17 +1,10 @@
 import os
-import datetime
-import unittest
-import datetime
-import pymongo
-import string
 import random
-import time
-import re
-import bson
-import decimal
+import string
+import unittest
 
-from tap_tester import connections, menagerie, runner
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from tap_tester import connections, menagerie, runner
 
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
