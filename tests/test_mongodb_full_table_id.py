@@ -1,20 +1,13 @@
 import base64
 import bson
-import datetime
-import decimal
 import os
-import pdb
-import pprint
-import pymongo
 import random
-import re
 import string
 import time
 import unittest
-from functools import reduce
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
-from tap_tester import connections, menagerie, runner, LOGGER
+from tap_tester import connections, menagerie, runner
 
 
 RECORD_COUNT = {}

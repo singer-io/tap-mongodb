@@ -1,15 +1,13 @@
-import os
-import uuid
-import decimal
-import string
 import bson
+import os
+import pymongo
+import uuid
 from datetime import datetime, timedelta
 from unittest import TestCase
 
-import pymongo
-
-from tap_tester import connections, menagerie, runner
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from tap_tester import connections, menagerie, runner
+
 
 RECORD_COUNT = {}
 VALID_REPLICATION_TYPES = {'datetime', 'Int64', 'float', 'int', 'str', 'Timestamp', 'UUID'}
