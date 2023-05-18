@@ -2,6 +2,7 @@ import os
 import random
 import string
 import unittest
+from bson import ObjectId
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
