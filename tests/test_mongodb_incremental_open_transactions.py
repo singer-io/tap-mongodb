@@ -1,15 +1,11 @@
 import os
-import uuid
-import decimal
-import string
-import bson
-from datetime import datetime, timedelta
-import unittest
-from unittest import TestCase
-import pymongo
 import random
-from tap_tester import connections, menagerie, runner
+import string
+import unittest
+
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from tap_tester import connections, menagerie, runner
+
 
 RECORD_COUNT = {}
 
