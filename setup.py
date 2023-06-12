@@ -14,6 +14,7 @@ setup(name='tap-mongodb',
           'pymongo==3.12.3',
           'tzlocal==2.0.0',
           'terminaltables==3.1.0',
+          'dnspython==2.1.0'
       ],
       extras_require={
           'dev': [

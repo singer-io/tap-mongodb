@@ -8,6 +8,7 @@ import pymongo
 from bson import timestamp
 
 import singer
+from urllib.parse import urlparse
 from singer import metadata, metrics, utils
 
 import tap_mongodb.sync_strategies.common as common
@@ -18,7 +19,7 @@ import tap_mongodb.sync_strategies.incremental as incremental
 
 LOGGER = singer.get_logger()
 
-REQUIRED_CONFIG_KEYS = [
+REQUIRED_CONFIG_KEYS_IF_NO_DATABASE_URL_PROVIDED = [
     'host',
     'port',
     'user',
@@ -352,27 +353,38 @@ def do_sync(client, catalog, state):
 
 
 def main_impl():
-    args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+    args = utils.parse_args([])
     config = args.config
 
-    # Default SSL verify mode to true, give option to disable
-    verify_mode = config.get('verify_mode', 'true') == 'true'
-    use_ssl = config.get('ssl') == 'true'
+    if not config.get('database_url', None):
+        args = utils.parse_args(REQUIRED_CONFIG_KEYS_IF_NO_DATABASE_URL_PROVIDED)
+        config = args.config
+        connection_params = {"host": config['host'],
+                             "port": int(config['port']),
+                             "username": config.get('user', None),
+                             "password": config.get('password', None),
+                             "authSource": config['database'],
+                             "ssl": use_ssl,
+                             "replicaset": config.get('replica_set', None),
+                             "readPreference": 'secondaryPreferred'}
 
-    connection_params = {"host": config['host'],
-                         "port": int(config['port']),
-                         "username": config.get('user', None),
-                         "password": config.get('password', None),
-                         "authSource": config['database'],
-                         "ssl": use_ssl,
-                         "replicaset": config.get('replica_set', None),
-                         "readPreference": 'secondaryPreferred'}
+        # Default SSL verify mode to true, give option to disable
+        verify_mode = config.get('verify_mode', 'true') == 'true'
+        use_ssl = config.get('ssl') == 'true'
 
-    # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
-    if not verify_mode and use_ssl:
-        connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+        # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
+        if not verify_mode and use_ssl:
+            connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
 
-    client = pymongo.MongoClient(**connection_params)
+        client = pymongo.MongoClient(**connection_params)
+
+    else:
+        url = config.get('database_url')
+        url_parsed = urlparse(url)
+        config['user'] = url_parsed.username
+        config['database'] = url_parsed.path[1:]
+        config['host'] = url_parsed.netloc
+        client = pymongo.MongoClient(url)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
