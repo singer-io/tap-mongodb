@@ -6,6 +6,7 @@ import sys
 import time
 import pymongo
 from bson import timestamp
+from bson.codec_options import DatetimeConversion
 
 import singer
 from singer import metadata, metrics, utils
@@ -366,7 +367,8 @@ def main_impl():
                          "authSource": config['database'],
                          "ssl": use_ssl,
                          "replicaset": config.get('replica_set', None),
-                         "readPreference": 'secondaryPreferred'}
+                         "readPreference": 'secondaryPreferred',
+                         "datetime_conversion": DatetimeConversion.DATETIME_AUTO}
 
     # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
     if not verify_mode and use_ssl:
