@@ -9,6 +9,9 @@ from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
 from terminaltables import AsciiTable
+from bson import objectid, timestamp, encode, decode, datetime as bson_datetime
+from bson.codec_options import CodecOptions, DatetimeConversion
+from bson.datetime_ms import DatetimeMS
 
 import pytz
 import tzlocal
@@ -163,6 +166,11 @@ def transform_value(value, path):
             'collection': value.collection,
             'database': value.database
         }
+    if isinstance(value, DatetimeMS):
+        encoded_datetime = encode({"datetime_value": value})
+        codec_option = CodecOptions(datetime_conversion=DatetimeConversion.DATETIME_CLAMP)
+        decoded_datetime = decode(encoded_datetime, codec_options=codec_option)
+        return safe_transform_datetime(decoded_datetime["datetime_value"], path)
 
     return value
 
