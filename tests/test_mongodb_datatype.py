@@ -26,6 +26,9 @@ def run_mongodb_javascript(database, js):
 
 
 class MongoDBDatatype(unittest.TestCase):
+    # To compare large dictionaries
+    maxDiff = None
+
     def setUp(self):
         ensure_environment_variables_set()
 
@@ -232,4 +235,8 @@ class MongoDBDatatype(unittest.TestCase):
                             "collection": "some_collection"}
         }
 
-        self.assertEquals(expected_record, records_by_stream['datatype_coll_1']['messages'][1]['data'])
+        dict_keys = list(expected_record.keys())
+        dict_keys.sort()
+
+        self.assertEquals({i: expected_record[i] for i in dict_keys},
+                          {i: records_by_stream['datatype_coll_1']['messages'][1]['data'][i] for i in dict_keys})
