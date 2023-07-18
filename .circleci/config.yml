@@ -77,7 +77,7 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==3.12.3
+            pip install pymongo==4.4.0
             nosetests tests/unittests/
       - run:
           name: 'Integration Tests'
@@ -86,7 +86,7 @@ jobs:
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==3.12.3
+            pip install pymongo==4.4.0
             run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
@@ -145,7 +145,7 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==3.12.3
+            pip install pymongo==4.4.0
             nosetests tests/unittests/
       - run:
           name: 'Integration Tests'
@@ -154,7 +154,7 @@ jobs:
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==3.12.3
+            pip install pymongo==4.4.0
             selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
             echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
@@ -224,7 +224,7 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==3.12.3
+            pip install pymongo==4.4.0
             nosetests tests/unittests/
       - run:
           name: 'Integration Tests'
@@ -233,7 +233,7 @@ jobs:
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==3.12.3
+            pip install pymongo==4.4.0
             selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
             echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
