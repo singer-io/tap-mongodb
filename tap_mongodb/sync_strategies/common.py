@@ -10,6 +10,7 @@ import singer
 from singer import utils, metadata
 from terminaltables import AsciiTable
 from bson import objectid, timestamp, encode, decode, datetime as bson_datetime
+from bson.binary import Binary
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import DatetimeMS
 
@@ -138,6 +139,8 @@ def transform_value(value, path):
         return utils.strftime(value.as_datetime())
     if isinstance(value, bson.int64.Int64):
         return int(value)
+    if isinstance(value, Binary):
+        return str(value.as_uuid(value.subtype))
     if isinstance(value, bytes):
         # Return the original base64 encoded string
         return base64.b64encode(value).decode('utf-8')
