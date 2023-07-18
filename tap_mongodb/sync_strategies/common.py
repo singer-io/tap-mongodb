@@ -5,7 +5,6 @@ import time
 import uuid
 import decimal
 import bson
-from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
 from terminaltables import AsciiTable
