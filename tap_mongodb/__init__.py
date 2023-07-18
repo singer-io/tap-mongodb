@@ -5,7 +5,6 @@ import ssl
 import sys
 import time
 import pymongo
-from bson import timestamp
 from bson.codec_options import DatetimeConversion
 
 import singer

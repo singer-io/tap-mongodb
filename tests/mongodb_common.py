@@ -22,7 +22,8 @@ def get_test_connection():
     auth_source = os.getenv('TAP_MONGODB_DBNAME')
     port = os.getenv('TAP_MONGODB_PORT')
     ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
+    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017,
+                               authSource=auth_source, ssl=ssl, uuidRepresentation='standard')
     return conn
 
 def drop_all_collections(client):
