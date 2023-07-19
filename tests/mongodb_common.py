@@ -20,9 +20,9 @@ def get_test_connection():
     password = os.getenv('TAP_MONGODB_PASSWORD')
     host= os.getenv('TAP_MONGODB_HOST')
     auth_source = os.getenv('TAP_MONGODB_DBNAME')
-    port = os.getenv('TAP_MONGODB_PORT')
+    port = int(os.getenv('TAP_MONGODB_PORT'))
     ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017,
+    conn = pymongo.MongoClient(host=host, username=username, password=password, port=port,
                                authSource=auth_source, ssl=ssl, uuidRepresentation='standard')
     return conn
 

@@ -8,9 +8,13 @@ from unittest import TestCase
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
 
+from debugpy import listen, wait_for_client
+listen(8000)
+wait_for_client()
+
 
 RECORD_COUNT = {}
-VALID_REPLICATION_TYPES = {'datetime', 'Int64', 'float', 'int', 'str', 'Timestamp', 'UUID'}
+VALID_REPLICATION_TYPES = {'datetime', 'Int64', 'float', 'int', 'str', 'Timestamp', 'UUID', 'Binary'}
 
 def z_string_generator(size=6):
     return 'z' * size
@@ -410,9 +414,10 @@ class MongoDBIncremental(TestCase):
         # Verify that data is not replicated when non replication key is updated
         ##############################################################################
 
-        # Sampling a document from a collection which we know it exists because of the data set up
-        no_rep_doc_coll_1 = client["simple_db"]["simple_coll_1"].find_one({"int_field": 20})
-        client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": no_rep_doc_coll_1["_id"]}, {"$set": {"string_field": 'No_replication'}})
+        with get_test_connection() as client:
+            # Sampling a document from a collection which we know it exists because of the data set up
+            no_rep_doc_coll_1 = client["simple_db"]["simple_coll_1"].find_one({"int_field": 20})
+            client["simple_db"]["simple_coll_1"].find_one_and_update({"_id": no_rep_doc_coll_1["_id"]}, {"$set": {"string_field": 'No_replication'}})
 
         # Run sync
         sync_job_name = runner.run_sync_mode(self, conn_id)
