@@ -8,10 +8,6 @@ from unittest import TestCase
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
 
-from debugpy import listen, wait_for_client
-listen(8000)
-wait_for_client()
-
 
 RECORD_COUNT = {}
 VALID_REPLICATION_TYPES = {'datetime', 'Int64', 'float', 'int', 'str', 'Timestamp', 'UUID', 'Binary'}
