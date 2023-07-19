@@ -190,7 +190,7 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             # Update two documents for each collection
 
             # curor objects do not support negative indicies so set indicies for last two records
-            num_records = client['simple_db']['simple_coll_1'].find().count()
+            num_records = len(list(client['simple_db']['simple_coll_1'].find()))
             last_index = num_records - 1
             sec_last_index = num_records -2
 
@@ -202,7 +202,7 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             changed_ids.add(object_id)
             client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
 
-            num_records = client['simple_db']['simple_coll_2'].find().count()
+            num_records = len(list(client['simple_db']['simple_coll_2'].find()))
             last_index = num_records - 1
             sec_last_index = num_records - 2
 
@@ -215,7 +215,7 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
 
             # Insert two documents for each collection
-            last_index = client['simple_db']['simple_coll_1'].find().count()
+            last_index = len(list(client['simple_db']['simple_coll_1'].find()))
             client["simple_db"]["simple_coll_1"].insert_one({"int.field": 50, "string$field": random_string_generator()})
             object_id = client["simple_db"]["simple_coll_1"].find()[last_index]['_id']
             changed_ids.add(object_id)
@@ -225,7 +225,7 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             object_id = client["simple_db"]["simple_coll_1"].find()[last_index]['_id']
             changed_ids.add(object_id)
 
-            last_index = client['simple_db']['simple_coll_2'].find().count()
+            last_index = len(list(client['simple_db']['simple_coll_2'].find()))
             client["simple_db"]["simple_coll_2"].insert_one({"int.field": 100, "string$field": random_string_generator()})
             object_id = client["simple_db"]["simple_coll_2"].find()[last_index]['_id']
             changed_ids.add(object_id)
