@@ -222,7 +222,7 @@ class MongoDBProjection(unittest.TestCase):
             #actual_keys = set()
 
             for record in stream_records:
-                # BUG TDL-23609. Pymongo v4.3+ return entire docuemtn for empty projection
+                # BUG TDL-23609. Pymongo v4.3+ returns entire document for empty projection
                 if projection_mapping['projection'] == {}:
                     continue
 
@@ -251,7 +251,7 @@ class MongoDBProjection(unittest.TestCase):
             stream_records = [x for x in messages_by_stream[stream_name]['messages'] if x.get('action') == 'upsert']
             #actual_keys = set()
             for record in stream_records:
-                # BUG TDL-23609. Pymongo v4.3+ return entire docuemtn for empty projection
+                # BUG TDL-23609. Pymongo v4.3+ returns entire document for empty projection
                 if projection_mapping['projection'] == {}:
                     continue
 
