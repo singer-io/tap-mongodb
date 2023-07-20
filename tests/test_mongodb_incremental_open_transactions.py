@@ -5,6 +5,7 @@ import unittest
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
+from tap_tester.logger import  LOGGER
 
 
 RECORD_COUNT = {}
@@ -118,11 +119,25 @@ class MongoDBOpenTransactions(unittest.TestCase):
                 'include_schemas_in_destination_stream_name': 'true'
         }
 
+    def set_transaction_life_time_limit_seconds(self, client, life_time_limit=60):
+        '''
+        We observed an random exception "pymongo.errors.OperationFailure: Transaction 3 has been aborted."
+        This occurs when transaction session expires so this method increases this limit
+        '''
+        output = client.admin.command(({'setParameter': 1, 'transactionLifetimeLimitSeconds': life_time_limit}))
+        return output["ok"] == 1, output['was']
+
     def test_run(self):
 
         ensure_environment_variables_set()
 
         with get_test_connection() as client:
+            # Increate the transaction life time limit
+            life_time_limit = 120
+            LOGGER.info(f"Setting transaction life time limit to {life_time_limit} seconds")
+            success, original_life_time_limit = self.set_transaction_life_time_limit_seconds(client, life_time_limit)
+            self.assertTrue(success, msg="Failed to set transaction life time limit")
+
             # drop all dbs/collections
             drop_all_collections(client)
 
@@ -133,8 +148,10 @@ class MongoDBOpenTransactions(unittest.TestCase):
             #################
 
             session1 = client.start_session()
+            LOGGER.info("Session 1: created")
 
             session1.start_transaction()
+            LOGGER.info("Session 1: started")
 
             # simple_coll_1 has 10 documents
             client["simple_db"]["simple_coll_1"].insert_many(generate_simple_coll_docs(10))
@@ -143,6 +160,7 @@ class MongoDBOpenTransactions(unittest.TestCase):
             client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(20))
 
             session1.commit_transaction()
+            LOGGER.info("Session 1: committed")
 
             # Create session 2
             '''
@@ -157,8 +175,10 @@ class MongoDBOpenTransactions(unittest.TestCase):
             ################
 
             session2 = client.start_session()
+            LOGGER.info("Session 2: created")
 
             session2.start_transaction()
+            LOGGER.info("Session 2: started")
 
             # simple_coll_3 is an empty collection
             client["simple_db"].create_collection("simple_coll_3")
@@ -227,6 +247,7 @@ class MongoDBOpenTransactions(unittest.TestCase):
             self.assertEqual(self.expected_pk_values_2(), pk_dict_2)
 
             session2.commit_transaction()
+            LOGGER.info("Session 2: committed")
 
             # Create session 3
             '''
@@ -238,8 +259,10 @@ class MongoDBOpenTransactions(unittest.TestCase):
             ################
 
             session3 = client.start_session()
+            LOGGER.info("Session 3: created")
 
             session3.start_transaction()
+            LOGGER.info("Session 3: started")
 
             # Run 2nd sync
             # run in discovery mode
@@ -284,6 +307,7 @@ class MongoDBOpenTransactions(unittest.TestCase):
                 client["simple_db"][collection].delete_one({"int_field": int(rep_key_value)}, session=session3)
 
             session3.commit_transaction()
+            LOGGER.info("Session 3: committed")
 
             '''
                Execute the sync, after the commit on session 3
@@ -306,3 +330,8 @@ class MongoDBOpenTransactions(unittest.TestCase):
 
             # validate that the state value has not changed after deleting the bookmarked value in each collection
             self.assertEqual(state_2, state_3)
+
+            # Reset the transaction life time limit
+            LOGGER.info(f"Re-setting transaction life time limit to {original_life_time_limit} seconds")
+            success, _ = self.set_transaction_life_time_limit_seconds(client, original_life_time_limit)
+            self.assertTrue(success, msg="Failed to reset transaction life time limit")
