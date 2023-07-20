@@ -163,7 +163,7 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==4.4.0
-            selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            selected_tests=$(circleci tests glob "tests/*{test_mongodb}*")
             echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
             if [ -s ./tests-to-run ]; then
@@ -242,7 +242,7 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==4.4.0
-            selected_tests=$(circleci tests glob "tests/*{test}*")
+            selected_tests=$(circleci tests glob "tests/*{test_mongodb}*")
             echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
             if [ -s ./tests-to-run ]; then
@@ -321,7 +321,7 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==4.4.0
-            selected_tests=$(circleci tests glob "tests/*{test}*")
+            selected_tests=$(circleci tests glob "tests/*{test_mongodb}*")
             echo -e "Tests running in this batch:\n$selected_tests\n"
             echo $selected_tests > ./tests-to-run
             if [ -s ./tests-to-run ]; then
