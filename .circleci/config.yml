@@ -27,6 +27,14 @@ executors:
           MONGO_INITDB_ROOT_USERNAME: dev
           MONGO_INITDB_ROOT_PASSWORD: Password1
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
+  tap_tester_mongo_6_0:
+    docker:
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: singerio/mongo:6.0
+        environment:
+          MONGO_INITDB_ROOT_USERNAME: dev
+          MONGO_INITDB_ROOT_PASSWORD: Password1
+        command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
 
 jobs:
   build:
@@ -255,6 +263,85 @@ jobs:
           only_for_branches: master
       - store_artifacts:
           path: /tmp/tap-mongodb
+  build_mongo_6_0:
+    executor: tap_tester_mongo_6_0
+    steps:
+      - checkout
+      - run:
+          name: 'Install Dockerize'
+          command: |
+            wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+            tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+            rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
+          environment:
+            DOCKERIZE_VERSION: v0.3.0
+      - run:
+          name: 'Wait for Mongo'
+          command: |
+            dockerize -wait tcp://127.0.0.1:27017 -timeout 1m
+            sleep 10
+      - run:
+          name: 'Setup Mongo'
+          command: |
+            aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
+            source tap-tester.env
+            wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add -
+            echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/6.0 multiverse" \
+                 | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
+            apt-get update
+            apt-get install -y mongodb-org-shell mongodb-mongosh mongodb-org
+            mongosh -u $TAP_MONGODB_USER \
+                    -p $TAP_MONGODB_PASSWORD \
+                    --authenticationDatabase admin \
+                    --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
+      - run:
+          name: 'Setup virtual env'
+          command: |
+            pyenv local 3.9.6
+            python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
+            source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
+            pip install -U 'pip==23.2' 'setuptools==68.0.0'
+            pip install .[dev]
+      - run:
+          name: 'pylint'
+          command: |
+            source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
+            make test
+      - run:
+          name: "Unit Tests"
+          command: |
+            source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
+            pip install pymongo==4.4.0
+            nosetests tests/unittests/
+      - run:
+          name: 'Integration Tests'
+          command: |
+            source tap-tester.env
+            mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
+            export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
+            source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            pip install pymongo==4.4.0
+            selected_tests=$(circleci tests glob "tests/*{data,interrupt,open,restrict,view}*")
+            echo -e "Tests running in this batch:\n$selected_tests\n"
+            echo $selected_tests > ./tests-to-run
+            if [ -s ./tests-to-run ]; then
+              for test_file in $(cat ./tests-to-run)
+              do
+                run-test --tap=tap-mongodb $test_file
+              done
+            else
+              echo "ERROR - File not found or file is empty!" >&2
+              exit 5
+            fi
+      - run:
+          name: 'Get Curl'
+          command: |
+            apt update
+            apt install -y curl
+      - slack/notify-on-failure:
+          only_for_branches: master
+      - store_artifacts:
+          path: /tmp/tap-mongodb
 
 workflows:
   version: 2
@@ -276,6 +363,12 @@ workflows:
             - tier-1-tap-user
           requires:
             - build_mongo_4_4
+      - build_mongo_6_0:
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          requires:
+            - build_mongo_5_0
   build_daily:
     <<: *commit_jobs
     triggers:
