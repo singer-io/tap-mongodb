@@ -9,6 +9,7 @@ import uuid
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
+from tap_tester.logger import  LOGGER
 
 
 RECORD_COUNT = {}
@@ -20,7 +21,7 @@ def run_mongodb_javascript(database, js, mongo_version):
     useful for setting up situations that Python can't handle (e.g.,
     datetime with year 0) for testing.
     """
-    print("Running '{}' against database '{}'".format(js, database))
+    LOGGER.info("Running '{}' against database '{}'".format(js, database))
 
     mongo_shell = "mongosh" if int(mongo_version.split(".")[0]) > 5 else "mongo"
     cmd = [mongo_shell, "-u", os.getenv('TAP_MONGODB_USER'), "-p", os.getenv('TAP_MONGODB_PASSWORD'), "--authenticationDatabase", os.getenv('TAP_MONGODB_DBNAME'), database, "--eval", "eval('{}')".format(js)]
