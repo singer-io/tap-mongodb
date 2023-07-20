@@ -1,5 +1,6 @@
 import os
 import pymongo
+from tap_tester.logger import  LOGGER
 
 
 def ensure_environment_variables_set():
@@ -34,5 +35,5 @@ def drop_all_collections(client):
         for collection_name in client[db_name].list_collection_names():
             if collection_name in ['system.views', 'system.version', 'system.keys', 'system.users']:
                 continue
-            print("Dropping database: " + db_name + ", collection: " + collection_name)
+            LOGGER.info("Dropping database: " + db_name + ", collection: " + collection_name)
             client[db_name][collection_name].drop()
