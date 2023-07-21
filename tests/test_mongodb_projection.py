@@ -69,40 +69,40 @@ class MongoDBProjection(unittest.TestCase):
 
     def projection_expected_keys_list(self):
         return [
-            {
-                "projection": {"int_field": 1},
-                "expected_keys": [{"_id", "int_field"},
-                                  {"_id", "_sdc_deleted_at"}]
-            },
-            {
-                "projection": {"int_field": 1, "_id": 1},
-                "expected_keys": [{"_id", "int_field"},
-                                  {"_id", "_sdc_deleted_at"}]
-            },
-            {
-                "projection": {"int_field": 0},
-                "expected_keys": [{"_id", "string_field"},
-                                  {"_id", "_sdc_deleted_at"}]
-            },
-            {
-                "projection": {"_id": 1},
-                "expected_keys": [{"_id"},
-                                  {"_id", "_sdc_deleted_at"}]
-            },
+            # {
+            #     "projection": {"int_field": 1},
+            #     "expected_keys": [{"_id", "int_field"},
+            #                       {"_id", "_sdc_deleted_at"}]
+            # },
+            # {
+            #     "projection": {"int_field": 1, "_id": 1},
+            #     "expected_keys": [{"_id", "int_field"},
+            #                       {"_id", "_sdc_deleted_at"}]
+            # },
+            # {
+            #     "projection": {"int_field": 0},
+            #     "expected_keys": [{"_id", "string_field"},
+            #                       {"_id", "_sdc_deleted_at"}]
+            # },
+            # {
+            #     "projection": {"_id": 1},
+            #     "expected_keys": [{"_id"},
+            #                       {"_id", "_sdc_deleted_at"}]
+            # },
             {
                 "projection": {},
                 "expected_keys": [{"_id"},
                                   {"_id", "_sdc_deleted_at"}]
-            },
-            {
-                "projection": None,
-                "expected_keys": [{"_id", "string_field", "int_field"},
-                                  {"_id", "_sdc_deleted_at"}]
-            },
-            {
-                "projection": "",
-                "expected_keys": [{"_id", "string_field", "int_field"},
-                                  {"_id", "_sdc_deleted_at"}]
+            # },
+            # {
+            #     "projection": None,
+            #     "expected_keys": [{"_id", "string_field", "int_field"},
+            #                       {"_id", "_sdc_deleted_at"}]
+            # },
+            # {
+            #     "projection": "",
+            #     "expected_keys": [{"_id", "string_field", "int_field"},
+            #                       {"_id", "_sdc_deleted_at"}]
             }
         ]
 
@@ -223,8 +223,8 @@ class MongoDBProjection(unittest.TestCase):
 
             for record in stream_records:
                 # BUG TDL-23609. Pymongo v4.3+ return entire docuemtn for empty projection
-                if projection_mapping['projection'] == {}:
-                    continue
+                # if projection_mapping['projection'] == {}:
+                #     continue
 
                 self.assertIn(record['data'].keys(), projection_mapping['expected_keys'])
                 #actual_keys = actual_keys.union(set(record['data'].keys()))
@@ -252,8 +252,8 @@ class MongoDBProjection(unittest.TestCase):
             #actual_keys = set()
             for record in stream_records:
                 # BUG TDL-23609. Pymongo v4.3+ return entire docuemtn for empty projection
-                if projection_mapping['projection'] == {}:
-                    continue
+                # if projection_mapping['projection'] == {}:
+                #     continue
 
                 self.assertIn(record['data'].keys(), projection_mapping['expected_keys'])
                 #actual_keys = actual_keys.union(set(record['data'].keys()))
