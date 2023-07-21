@@ -134,7 +134,7 @@ class MongoDBOpenTransactions(unittest.TestCase):
         with get_test_connection() as client:
             # Increate the transaction life time limit
             life_time_limit = 120
-            LOGGER.info(f"Setting transaction life time limit to {life_time_limit} seconds")
+            LOGGER.info("Setting transaction life time limit to {} seconds".format(life_time_limit))
             success, original_life_time_limit = self.set_transaction_life_time_limit_seconds(client, life_time_limit)
             self.assertTrue(success, msg="Failed to set transaction life time limit")
 
@@ -332,6 +332,6 @@ class MongoDBOpenTransactions(unittest.TestCase):
             self.assertEqual(state_2, state_3)
 
             # Reset the transaction life time limit
-            LOGGER.info(f"Re-setting transaction life time limit to {original_life_time_limit} seconds")
+            LOGGER.info("Re-setting transaction life time limit to {} seconds".format(original_life_time_limit))
             success, _ = self.set_transaction_life_time_limit_seconds(client, original_life_time_limit)
             self.assertTrue(success, msg="Failed to reset transaction life time limit")
