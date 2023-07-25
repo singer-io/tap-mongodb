@@ -132,7 +132,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
         'ns': {'$eq' : '{}.{}'.format(database_name, collection_name)}
     }
 
-    projection = transform_projection(stream_projection) if stream_projection != {} else None
+    projection = transform_projection(stream_projection)
 
     oplog_replay = stream_projection is None
 
