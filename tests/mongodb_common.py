@@ -1,6 +1,6 @@
 import os
 import pymongo
-from tap_tester.logger import  LOGGER
+from tap_tester.logger import LOGGER
 
 
 def ensure_environment_variables_set():
