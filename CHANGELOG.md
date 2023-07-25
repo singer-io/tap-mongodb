@@ -1,5 +1,8 @@
 # Changelog
 
+## 2.1.3
+  * Fix a bug in Full Table sync that caused a sync to fail if document contained invalid BSON[#95](https://github.com/singer-io/tap-mongodb/pull/95)
+
 ## 2.1.2
   * Update pymongo to v3.12.3 [#81](https://github.com/singer-io/tap-mongodb/pull/81)
 
