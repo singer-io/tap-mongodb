@@ -7,6 +7,10 @@ from singer import metadata, utils
 from bson import timestamp
 import tap_mongodb.sync_strategies.common as common
 
+# from debugpy import listen, wait_for_client
+# listen(8000)
+# wait_for_client()
+
 LOGGER = singer.get_logger()
 
 SDC_DELETED_AT = "_sdc_deleted_at"
@@ -132,7 +136,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
         'ns': {'$eq' : '{}.{}'.format(database_name, collection_name)}
     }
 
-    projection = transform_projection(stream_projection)
+    projection = transform_projection(stream_projection) if stream_projection != {} else None
 
     oplog_replay = stream_projection is None
 
