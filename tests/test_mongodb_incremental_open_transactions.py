@@ -5,7 +5,7 @@ import unittest
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
-from tap_tester.logger import  LOGGER
+from tap_tester.logger import LOGGER
 
 
 RECORD_COUNT = {}
