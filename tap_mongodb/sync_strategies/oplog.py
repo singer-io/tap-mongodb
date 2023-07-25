@@ -7,10 +7,6 @@ from singer import metadata, utils
 from bson import timestamp
 import tap_mongodb.sync_strategies.common as common
 
-# from debugpy import listen, wait_for_client
-# listen(8000)
-# wait_for_client()
-
 LOGGER = singer.get_logger()
 
 SDC_DELETED_AT = "_sdc_deleted_at"
