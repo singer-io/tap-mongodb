@@ -251,10 +251,6 @@ class MongoDBProjection(unittest.TestCase):
             stream_records = [x for x in messages_by_stream[stream_name]['messages'] if x.get('action') == 'upsert']
             #actual_keys = set()
             for record in stream_records:
-                # BUG TDL-23609. Pymongo v4.3+ return entire docuemtn for empty projection
-                # if projection_mapping['projection'] == {}:
-                #     continue
-
                 self.assertIn(record['data'].keys(), projection_mapping['expected_keys'])
                 #actual_keys = actual_keys.union(set(record['data'].keys()))
             #self.assertTrue(actual_keys.issubset(projection_mapping['expected_keys']))
