@@ -87,18 +87,7 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==4.4.0
-            selected_tests=$(circleci tests glob "tests/test_mongodb*")
-            echo -e "Tests running in this batch:\n$selected_tests\n"
-            echo $selected_tests > ./tests-to-run
-            if [ -s ./tests-to-run ]; then
-              for test_file in $(cat ./tests-to-run)
-              do
-                run-test --tap=tap-mongodb $test_file
-              done
-            else
-              echo "ERROR - File not found or file is empty!" >&2
-              exit 5
-            fi
+            run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
           command: |
@@ -166,18 +155,7 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==4.4.0
-            selected_tests=$(circleci tests glob "tests/test_mongodb*")
-            echo -e "Tests running in this batch:\n$selected_tests\n"
-            echo $selected_tests > ./tests-to-run
-            if [ -s ./tests-to-run ]; then
-              for test_file in $(cat ./tests-to-run)
-              do
-                run-test --tap=tap-mongodb $test_file
-              done
-            else
-              echo "ERROR - File not found or file is empty!" >&2
-              exit 5
-            fi
+            run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
           command: |
@@ -245,18 +223,7 @@ jobs:
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
             pip install pymongo==4.4.0
-            selected_tests=$(circleci tests glob "tests/test_mongodb*")
-            echo -e "Tests running in this batch:\n$selected_tests\n"
-            echo $selected_tests > ./tests-to-run
-            if [ -s ./tests-to-run ]; then
-              for test_file in $(cat ./tests-to-run)
-              do
-                run-test --tap=tap-mongodb $test_file
-              done
-            else
-              echo "ERROR - File not found or file is empty!" >&2
-              exit 5
-            fi
+            run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
           command: |
