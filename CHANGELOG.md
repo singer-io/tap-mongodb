@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0
+  * Upgrade PyMongo to v4.3+ [#99](https://github.com/singer-io/tap-mongodb/pull/99)
+  * Fix uuid transformation [#100](https://github.com/singer-io/tap-mongodb/pull/100)
+  * Fix circle ci config [#101](https://github.com/singer-io/tap-mongodb/pull/101)
+  * Fix empty projection [#102](https://github.com/singer-io/tap-mongodb/pull/102)
+
 ## 2.1.3
   * Fix a bug in Full Table sync that caused a sync to fail if document contained invalid BSON[#95](https://github.com/singer-io/tap-mongodb/pull/95)
 
