@@ -11,7 +11,7 @@ setup(name='tap-mongodb',
       py_modules=['tap_mongodb'],
       install_requires=[
           'singer-python==5.8.0',
-          'pymongo==3.12.3',
+          'pymongo==4.4.0',
           'tzlocal==2.0.0',
           'terminaltables==3.1.0',
       ],
