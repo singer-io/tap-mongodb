@@ -29,7 +29,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
 
 jobs:
-  build_mongo_4_4:
+  build:
     executor: tap_tester_mongo_4_4
     steps:
       - checkout
