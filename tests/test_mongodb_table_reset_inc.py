@@ -9,7 +9,7 @@ from mongodb_common import drop_all_collections, get_test_connection, ensure_env
 from tap_tester import connections, menagerie, runner
 
 RECORD_COUNT = {}
-VALID_REPLICATION_TYPES = {'datetime', 'Int64', 'float', 'int', 'str', 'Timestamp', 'UUID'}
+VALID_REPLICATION_TYPES = {'datetime', 'Int64', 'float', 'int', 'str', 'Timestamp', 'UUID', 'Binary'}
 
 def z_string_generator(size=6):
     return 'z' * size

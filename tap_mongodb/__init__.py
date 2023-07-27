@@ -5,7 +5,6 @@ import ssl
 import sys
 import time
 import pymongo
-from bson import timestamp
 from bson.codec_options import DatetimeConversion
 
 import singer
@@ -234,7 +233,10 @@ def write_schema_message(stream):
 def load_stream_projection(stream):
     md_map = metadata.to_map(stream['metadata'])
     stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
-    if stream_projection == '' or stream_projection == '""' or not stream_projection:
+    if (stream_projection == ''
+        or stream_projection == '""'
+        or stream_projection == '{}'
+        or not stream_projection):
         return None
 
     try:

@@ -5,11 +5,11 @@ import time
 import uuid
 import decimal
 import bson
-from bson import objectid, timestamp, datetime as bson_datetime
 import singer
 from singer import utils, metadata
 from terminaltables import AsciiTable
 from bson import objectid, timestamp, encode, decode, datetime as bson_datetime
+from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion
 from bson.datetime_ms import DatetimeMS
 
@@ -70,6 +70,9 @@ def class_to_string(bookmark_value, bookmark_type):
         return base64.b64encode(bookmark_value).decode('utf-8')
     if bookmark_type in ['int', 'Int64', 'float', 'ObjectId', 'str', 'UUID']:
         return str(bookmark_value)
+    if bookmark_type == 'Binary':
+        return str(bookmark_value.as_uuid(bookmark_value.subtype))
+
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(bookmark_type))
 
@@ -95,6 +98,8 @@ def string_to_class(str_value, type_value):
         return base64.b64decode(str_value.encode())
     if type_value == 'str':
         return str(str_value)
+    if type_value == 'Binary':
+        return Binary.from_uuid(uuid.UUID(str_value), UuidRepresentation.STANDARD)
     raise UnsupportedReplicationKeyTypeException("{} is not a supported replication key type"
                                                  .format(type_value))
 
@@ -138,6 +143,8 @@ def transform_value(value, path):
         return utils.strftime(value.as_datetime())
     if isinstance(value, bson.int64.Int64):
         return int(value)
+    if isinstance(value, Binary):
+        return str(value.as_uuid(value.subtype))
     if isinstance(value, bytes):
         # Return the original base64 encoded string
         return base64.b64encode(value).decode('utf-8')
