@@ -91,7 +91,7 @@ class MongoDBProjection(unittest.TestCase):
             },
             {
                 "projection": {},
-                "expected_keys": [{"_id"},
+                "expected_keys": [{"_id", "string_field", "int_field"},
                                   {"_id", "_sdc_deleted_at"}]
             },
             {
