@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.1
+  * Fix issue with SSH tunnel connections by connecting directly to a MongoDB node instead of allowing PyMongo to automatically discover replica sets [#105](https://github.com/singer-io/tap-mongodb/pull/105)
+
 ## 3.0.0
   * Upgrade PyMongo to v4.3+ [#99](https://github.com/singer-io/tap-mongodb/pull/99)
   * Fix uuid transformation [#100](https://github.com/singer-io/tap-mongodb/pull/100)
