@@ -370,7 +370,8 @@ def main_impl():
                          "ssl": use_ssl,
                          "replicaset": config.get('replica_set', None),
                          "readPreference": 'secondaryPreferred',
-                         "datetime_conversion": DatetimeConversion.DATETIME_AUTO}
+                         "datetime_conversion": DatetimeConversion.DATETIME_AUTO,
+                         "directConnection": True}
 
     # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
     if not verify_mode and use_ssl:
