@@ -6,15 +6,20 @@ import subprocess
 import time
 from argparse import RawTextHelpFormatter
 
-image_name = "mongo"
-image_tag = "4.2.0-bionic"
+# singerio images have required keyfile
+image_name = "singerio/mongo"
+image_tag = "4.2-bionic"
+# image_tag = "4.4-bionic"
+# image_tag = "5.0"
 
 def start_container(name):
 
     START_COMMAND = """
-    sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}"\
+    sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}" \
         -p {2}:{2} --name {3} \
-        -d {4}:{5} --replSet rs0
+        -d {4}:{5} \
+        --auth \
+        --keyFile /opt/mongo/keyfile --replSet rs0
     """.format(os.getenv('TAP_MONGODB_USER'),
                os.getenv('TAP_MONGODB_PASSWORD'),
                os.getenv('TAP_MONGODB_PORT'),
@@ -33,17 +38,19 @@ def start_container(name):
     time.sleep(5)
 
     ip_addr = get_ip_addr(name)
+    # If using image_version <=4.4.0-bionic use mongo, not mongosh
     CONFIGURE_COMMAND = """
-    docker run --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
-    """.format(ip_addr,
-               os.getenv('TAP_MONGODB_USER'),
-               os.getenv('TAP_MONGODB_PASSWORD'),
-               '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
-    print(CONFIGURE_COMMAND)
+     docker exec mongo1 mongosh --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
+    """.format(
+        ip_addr,
+        os.getenv('TAP_MONGODB_USER'),
+        os.getenv('TAP_MONGODB_PASSWORD'),
+        '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
+    print("Initiate replSet using: {}".format(CONFIGURE_COMMAND))
     proc = subprocess.run(CONFIGURE_COMMAND, shell=True)
     if proc.returncode != 0:
         sys.exit("Exited with code: {}, the docker command failed.".format(proc.returncode))
-    print("Oploag configured correctly.")
+    print("Oplog configured correctly.")
 
 
 def get_ip_addr(name):
