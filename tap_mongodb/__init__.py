@@ -375,7 +375,7 @@ def main_impl():
 
     # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
     if not verify_mode and use_ssl:
-        connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+        connection_params["tlsAllowInvalidCertificates"] = True
 
     client = pymongo.MongoClient(**connection_params)
 
