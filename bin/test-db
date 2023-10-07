@@ -8,9 +8,23 @@ from argparse import RawTextHelpFormatter
 
 # singerio images have required keyfile
 image_name = "singerio/mongo"
-image_tag = "4.2-bionic"
-# image_tag = "4.4-bionic"
-# image_tag = "5.0"
+
+# image_tag = "4.2-bionic"  # version 5.0.15 TODO Remove?
+# image_tag = "4.4-bionic"  # version 4.4.6
+# image_tag = "5.0"         # version 5.0.15
+image_tag = "6.0"           # version 6.0.4
+
+# organize command options based on image_tag
+command_options = {
+    '4.2-bionic': {'conf_option': 'mongo',
+                    'conn_option': 'mongo:4.2.0-bionic mongo'},
+    '4.4-bionic': {'conf_option': 'mongo',
+                   'conn_option': 'mongo:4.4.0-bionic mongo'},
+    '5.0': {'conf_option': 'mongosh',
+            'conn_option': 'mongo:5.0 mongosh'},  # also supports mongo
+    '6.0': {'conf_option': 'mongosh',
+            'conn_option': 'singerio/mongo:6.0 mongosh'},
+}
 
 def start_container(name):
 
@@ -40,8 +54,9 @@ def start_container(name):
     ip_addr = get_ip_addr(name)
     # If using image_version <=4.4.0-bionic use mongo, not mongosh
     CONFIGURE_COMMAND = """
-     docker exec mongo1 mongosh --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
+     docker exec mongo1 {} --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
     """.format(
+        command_options[image_tag]['conf_option'],
         ip_addr,
         os.getenv('TAP_MONGODB_USER'),
         os.getenv('TAP_MONGODB_PASSWORD'),
@@ -71,12 +86,12 @@ def stop_container(name):
     print("Process stopped successfully")
 
 def connect_to_db(name):
-    CONNECT_COMMAND = "docker run -it --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin"
-
+    CONNECT_COMMAND = "docker run -it --rm {} --host {} test -u {} -p {} --authenticationDatabase admin"
     ip_addr = get_ip_addr(name)
 
     print("Attempting to connect to running container using a mongo container")
-    connect_command_format = CONNECT_COMMAND.format(ip_addr,
+    connect_command_format = CONNECT_COMMAND.format(command_options[image_tag]['conn_option'],
+                                                    ip_addr,
                                                     os.getenv('TAP_MONGODB_USER'),
                                                     os.getenv('TAP_MONGODB_PASSWORD'))
     print(connect_command_format)

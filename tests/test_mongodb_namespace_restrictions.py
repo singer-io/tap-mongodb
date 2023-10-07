@@ -5,17 +5,36 @@ import unittest
 from bson import ObjectId
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
-from tap_tester import connections, menagerie, runner
+from tap_tester import connections, menagerie, runner, LOGGER
 
 
 RECORD_COUNT = {}
 
-# Collection names.  Mongo 4.2 max supported namespace is 120 bytes = 120 characters
+# namespace length = db name + collection name + 1 (for the separator dot)
+#   mongo 4.2 max supported namespace is 120 bytes = 120 characters
+#   mongo 4.4, 5.0, and 6.0 max supported namespace is 255 bytes
+db_name = 'simple_db'
+max_name_length = 120
+
+# collection names
 coll_name_1 = ( "Collection_name_with_120_characters_012345678901234567890123456789"
                 "01234567890123456789012345678901234567890123" )
 coll_name_2 = ( "Collection_name_with_120_characters_123456789012345678901234567890"
                 "12345678901234567890123456789012345678901234" )
-
+coll_name_3 = ( "Collection_name_with_121_characters_234567890123456789012345678901"
+                "234567890123456789012345678901234567890123456")
+coll_name_4 = ( "Collection_name_with_255_characters_345678901234567890123456789012"
+                "345678901234567890123456789012345678901234567890123456789012345678"
+                "901234567890123456789012345678901234567890123456789012345678901234"
+                "56789012345678901234567890123456789012345678901")
+coll_name_5 = ( "Collection_name_with_255_characters_456789012345678901234567890123"
+                "456789012345678901234567890123456789012345678901234567890123456789"
+                "012345678901234567890123456789012345678901234567890123456789012345"
+                "67890123456789012345678901234567890123456789012")
+coll_name_6 = ( "Collection_name_with_256_characters_567890123456789012345678901234"
+                "567890123456789012345678901234567890123456789012345678901234567890"
+                "123456789012345678901234567890123456789012345678901234567890123456"
+                "789012345678901234567890123456789012345678901234")
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
@@ -38,35 +57,66 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
             ############# Drop all dbs/collections #############
             drop_all_collections(client)
 
+            db_version = client.server_info()['version']
+            LOGGER.info("MongoDB version: {}".format(db_version))
+
+            if db_version.startswith('4.2.'):  # 4.2-bionic db version string unknown BUG
+                self.coll_name_1 = coll_name_1
+                self.coll_name_2 = coll_name_2
+                self.coll_name_3 = coll_name_3
+                self.max_name_length = max_name_length
+            elif db_version in ['4.4.6', '5.0.15', '6.0.4']:
+                self.coll_name_1 = coll_name_4
+                self.coll_name_2 = coll_name_5
+                self.coll_name_3 = coll_name_6
+                self.max_name_length = 255
+            else:
+                assert True == False, "Uknown database version detected!"
+
+            LOGGER.info("Namespace lengths. 1: {}, 2: {}, 3: {}, Max: {}".format(
+                len(self.coll_name_1) + len(db_name) + 1,
+                len(self.coll_name_2) + len(db_name) + 1,
+                len(self.coll_name_3) + len(db_name) + 1,
+                self.max_name_length))
+
             ############# Add simple collections #############
             # coll_name_1 has 50 documents
-            client["simple_db"][coll_name_1].insert_many(generate_simple_coll_docs(50))
+            client[db_name][self.coll_name_1].insert_many(generate_simple_coll_docs(50))
 
             # coll_name_2 has 100 documents
-            client["simple_db"][coll_name_2].insert_many(generate_simple_coll_docs(100))
+            client[db_name][self.coll_name_2].insert_many(generate_simple_coll_docs(100))
+
+            # coll_name_3 should fail
+            with self.assertRaises(Exception) as e:
+                client[db_name][self.coll_name_3].insert_many(generate_simple_coll_docs(10))
+
+            self.assertIn("pymongo.errors.OperationFailure", str(e.exception.__class__))
+            self.assertIn("Fully qualified namespace is too long", str(e.exception.details))
+            self.assertIn(f"Max: {self.max_name_length}", str(e.exception.details))
+
 
     def expected_check_streams(self):
         return {
-            f'simple_db-{coll_name_1}',
-            f'simple_db-{coll_name_2}',
+            f'{db_name}-{self.coll_name_1}',
+            f'{db_name}-{self.coll_name_2}',
         }
 
     def expected_pks(self):
         return {
-            coll_name_1: {'_id'},
-            coll_name_2: {'_id'},
+            self.coll_name_1: {'_id'},
+            self.coll_name_2: {'_id'},
         }
 
     def expected_row_counts(self):
         return {
-            coll_name_1: 50,
-            coll_name_2: 100,
+            self.coll_name_1: 50,
+            self.coll_name_2: 100,
         }
 
     def expected_sync_streams(self):
         return {
-            coll_name_1,
-            coll_name_2
+            self.coll_name_1,
+            self.coll_name_2
         }
 
     def name(self):
@@ -87,7 +137,6 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
                 'user' : os.getenv('TAP_MONGODB_USER'),
                 'database' : os.getenv('TAP_MONGODB_DBNAME')
         }
-
 
     def test_run(self):
 
@@ -168,48 +217,47 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
             self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_time'])
             self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
 
-
         changed_ids = set()
         with get_test_connection() as client:
             # Delete two documents for each collection
 
-            changed_ids.add(client['simple_db'][coll_name_1].find({'int_field': 0})[0]['_id'])
-            client["simple_db"][coll_name_1].delete_one({'int_field': 0})
+            changed_ids.add(client[db_name][self.coll_name_1].find({'int_field': 0})[0]['_id'])
+            client[db_name][self.coll_name_1].delete_one({'int_field': 0})
 
-            changed_ids.add(client['simple_db'][coll_name_1].find({'int_field': 1})[0]['_id'])
-            client["simple_db"][coll_name_1].delete_one({'int_field': 1})
+            changed_ids.add(client[db_name][self.coll_name_1].find({'int_field': 1})[0]['_id'])
+            client[db_name][self.coll_name_1].delete_one({'int_field': 1})
 
-            changed_ids.add(client['simple_db'][coll_name_2].find({'int_field': 0})[0]['_id'])
-            client["simple_db"][coll_name_2].delete_one({'int_field': 0})
+            changed_ids.add(client[db_name][self.coll_name_2].find({'int_field': 0})[0]['_id'])
+            client[db_name][self.coll_name_2].delete_one({'int_field': 0})
 
-            changed_ids.add(client['simple_db'][coll_name_2].find({'int_field': 1})[0]['_id'])
-            client["simple_db"][coll_name_2].delete_one({'int_field': 1})
+            changed_ids.add(client[db_name][self.coll_name_2].find({'int_field': 1})[0]['_id'])
+            client[db_name][self.coll_name_2].delete_one({'int_field': 1})
 
             # Update two documents for each collection
-            changed_ids.add(client['simple_db'][coll_name_1].find({'int_field': 48})[0]['_id'])
-            client["simple_db"][coll_name_1].update_one({'int_field': 48},{'$set': {'int_field': -1}})
+            changed_ids.add(client[db_name][self.coll_name_1].find({'int_field': 48})[0]['_id'])
+            client[db_name][self.coll_name_1].update_one({'int_field': 48},{'$set': {'int_field': -1}})
 
-            changed_ids.add(client['simple_db'][coll_name_1].find({'int_field': 49})[0]['_id'])
-            client["simple_db"][coll_name_1].update_one({'int_field': 49},{'$set': {'int_field': -1}})
+            changed_ids.add(client[db_name][self.coll_name_1].find({'int_field': 49})[0]['_id'])
+            client[db_name][self.coll_name_1].update_one({'int_field': 49},{'$set': {'int_field': -1}})
 
-            changed_ids.add(client['simple_db'][coll_name_2].find({'int_field': 98})[0]['_id'])
-            client["simple_db"][coll_name_2].update_one({'int_field': 98},{'$set': {'int_field': -1}})
+            changed_ids.add(client[db_name][self.coll_name_2].find({'int_field': 98})[0]['_id'])
+            client[db_name][self.coll_name_2].update_one({'int_field': 98},{'$set': {'int_field': -1}})
 
-            changed_ids.add(client['simple_db'][coll_name_2].find({'int_field': 99})[0]['_id'])
-            client["simple_db"][coll_name_2].update_one({'int_field': 99},{'$set': {'int_field': -1}})
+            changed_ids.add(client[db_name][self.coll_name_2].find({'int_field': 99})[0]['_id'])
+            client[db_name][self.coll_name_2].update_one({'int_field': 99},{'$set': {'int_field': -1}})
 
             # Insert two documents for each collection
-            client["simple_db"][coll_name_1].insert_one({"int_field": 50, "string_field": random_string_generator()})
-            changed_ids.add(client['simple_db'][coll_name_1].find({'int_field': 50})[0]['_id'])
+            client[db_name][self.coll_name_1].insert_one({"int_field": 50, "string_field": random_string_generator()})
+            changed_ids.add(client[db_name][self.coll_name_1].find({'int_field': 50})[0]['_id'])
 
-            client["simple_db"][coll_name_1].insert_one({"int_field": 51, "string_field": random_string_generator()})
-            changed_ids.add(client['simple_db'][coll_name_1].find({'int_field': 51})[0]['_id'])
+            client[db_name][self.coll_name_1].insert_one({"int_field": 51, "string_field": random_string_generator()})
+            changed_ids.add(client[db_name][self.coll_name_1].find({'int_field': 51})[0]['_id'])
 
-            client["simple_db"][coll_name_2].insert_one({"int_field": 100, "string_field": random_string_generator()})
-            changed_ids.add(client['simple_db'][coll_name_2].find({'int_field': 100})[0]['_id'])
+            client[db_name][self.coll_name_2].insert_one({"int_field": 100, "string_field": random_string_generator()})
+            changed_ids.add(client[db_name][self.coll_name_2].find({'int_field': 100})[0]['_id'])
 
-            client["simple_db"][coll_name_2].insert_one({"int_field": 101, "string_field": random_string_generator()})
-            changed_ids.add(client['simple_db'][coll_name_2].find({'int_field': 101})[0]['_id'])
+            client[db_name][self.coll_name_2].insert_one({"int_field": 101, "string_field": random_string_generator()})
+            changed_ids.add(client[db_name][self.coll_name_2].find({'int_field': 101})[0]['_id'])
 
         #  -------------------------------------------
         #  ----------- Subsequent Oplog Sync ---------
@@ -225,7 +273,8 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
         messages_by_stream = runner.get_records_from_target_output()
         records_by_stream = {}
         for stream_name in self.expected_sync_streams():
-            records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages'] if x.get('action') == 'upsert']
+            records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages']
+                                              if x.get('action') == 'upsert']
 
         # assert that each of the streams that we synced are the ones that we expect to see
         record_count_by_stream = runner.examine_target_output_file(self,
@@ -239,9 +288,13 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
             self.assertGreaterEqual(v, 6)
 
         # Verify that we got 2 records with _SDC_DELETED_AT
-        self.assertEqual(2, len([x['data'] for x in records_by_stream[coll_name_1] if x['data'].get('_sdc_deleted_at')]))
-        self.assertEqual(2, len([x['data'] for x in records_by_stream[coll_name_2] if x['data'].get('_sdc_deleted_at')]))
+        self.assertEqual(2, len([x['data'] for x in records_by_stream[self.coll_name_1]
+                                 if x['data'].get('_sdc_deleted_at')]))
+        self.assertEqual(2, len([x['data'] for x in records_by_stream[self.coll_name_2]
+                                 if x['data'].get('_sdc_deleted_at')]))
         # Verify that the _id of the records sent are the same set as the
         # _ids of the documents changed
-        actual = set([ObjectId(x['data']['_id']) for x in records_by_stream[coll_name_1]]).union(set([ObjectId(x['data']['_id']) for x in records_by_stream[coll_name_2]]))
+        actual = set(
+            [ObjectId(x['data']['_id']) for x in records_by_stream[self.coll_name_1]]).union(set(
+                [ObjectId(x['data']['_id']) for x in records_by_stream[self.coll_name_2]]))
         self.assertEqual(changed_ids, actual)
