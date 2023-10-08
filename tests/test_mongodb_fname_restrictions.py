@@ -296,20 +296,20 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                     client["simple_db"]["simple_coll_3"].update_one(
                         {'_id': object_id},{'$set': {'.int_field': -1}})
 
-                    e1_error = ".int_field' contains an empty field name, which is not allowed"
-                    self.assertIn('pymongo.errors.WriteError', str(e1.exception.__class__))
-                    self.assertIn(e1_error, str(e1.exception.details))
+                e1_error = ".int_field' contains an empty field name, which is not allowed"
+                self.assertIn('pymongo.errors.WriteError', str(e1.exception.__class__))
+                self.assertIn(e1_error, str(e1.exception.details))
 
-                    object_id = client['simple_db']['simple_coll_3'].find()[last_index]['_id']
-                    changed_ids.add(object_id)
-                    with self.assertRaises(Exception) as e2:
-                        client["simple_db"]["simple_coll_3"].update_one(
-                            {'_id': object_id},{'$set': {'$string_field': "Updated_3"}})
+                object_id = client['simple_db']['simple_coll_3'].find()[last_index]['_id']
+                changed_ids.add(object_id)
+                with self.assertRaises(Exception) as e2:
+                    client["simple_db"]["simple_coll_3"].update_one(
+                        {'_id': object_id},{'$set': {'$string_field': "Updated_3"}})
 
-                        e2_error = ( "The dollar ($) prefixed field '$string_field' in '$string_field' is not "
-                                     "allowed in the context of an update's replacement document." )
-                        self.assertIn('pymongo.errors.WriteError', str(e2.exception.__class__))
-                        self.assertIn(e2_error, str(e2.exception.details))
+                e2_error = ( "The dollar ($) prefixed field '$string_field' in '$string_field' is not "
+                             "allowed in the context of an update's replacement document." )
+                self.assertIn('pymongo.errors.WriteError', str(e2.exception.__class__))
+                self.assertIn(e2_error, str(e2.exception.details))
 
             # Insert two documents for each collection
             last_index = len(list(client['simple_db']['simple_coll_1'].find()))
@@ -390,9 +390,10 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         # _ids of the documents changed
         actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_1']]).union(
             set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_2']]))
+
         if self.db_version != '4.4.6':
-            actual.union(set([ObjectId(x['data']['_id']) for x
-                              in records_by_stream['simple_coll_3']]))
+            actual = actual.union(set([ObjectId(x['data']['_id']) for x
+                                       in records_by_stream['simple_coll_3']]))
         self.assertEqual(changed_ids, actual)
 
         with get_test_connection() as client:
