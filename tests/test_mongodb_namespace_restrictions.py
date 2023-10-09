@@ -3,6 +3,7 @@ import random
 import string
 import unittest
 from bson import ObjectId
+from pymongo.errors import OperationFailure
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner, LOGGER
@@ -17,24 +18,14 @@ db_name = 'simple_db'
 max_name_length = 120
 
 # collection names
-coll_name_1 = ( "Collection_name_with_120_characters_012345678901234567890123456789"
-                "01234567890123456789012345678901234567890123" )
-coll_name_2 = ( "Collection_name_with_120_characters_123456789012345678901234567890"
-                "12345678901234567890123456789012345678901234" )
-coll_name_3 = ( "Collection_name_with_121_characters_234567890123456789012345678901"
-                "234567890123456789012345678901234567890123456")
-coll_name_4 = ( "Collection_name_with_255_characters_345678901234567890123456789012"
-                "345678901234567890123456789012345678901234567890123456789012345678"
-                "901234567890123456789012345678901234567890123456789012345678901234"
-                "56789012345678901234567890123456789012345678901")
-coll_name_5 = ( "Collection_name_with_255_characters_456789012345678901234567890123"
-                "456789012345678901234567890123456789012345678901234567890123456789"
-                "012345678901234567890123456789012345678901234567890123456789012345"
-                "67890123456789012345678901234567890123456789012")
-coll_name_6 = ( "Collection_name_with_256_characters_567890123456789012345678901234"
-                "567890123456789012345678901234567890123456789012345678901234567890"
-                "123456789012345678901234567890123456789012345678901234567890123456"
-                "789012345678901234567890123456789012345678901234")
+coll_name_1 = f'{"Collection_name_with_110_characters_":1<110}'
+coll_name_2 = f'{"Collection_name_with_110_characters_":2<110}'
+coll_name_3 = f'{"Collection_name_with_111_characters_":3<111}'
+
+coll_name_4 = f'{"Collection_name_with_245_characters_":4<245}'
+coll_name_5 = f'{"Collection_name_with_245_characters_":5<245}'
+coll_name_6 = f'{"Collection_name_with_246_characters_":6<246}'
+
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
@@ -87,12 +78,11 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
             client[db_name][self.coll_name_2].insert_many(generate_simple_coll_docs(100))
 
             # coll_name_3 should fail
-            with self.assertRaises(Exception) as e:
+            with self.assertRaises(OperationFailure) as e:
                 client[db_name][self.coll_name_3].insert_many(generate_simple_coll_docs(10))
 
-            self.assertIn("pymongo.errors.OperationFailure", str(e.exception.__class__))
-            self.assertIn("Fully qualified namespace is too long", str(e.exception.details))
-            self.assertIn(f"Max: {self.max_name_length}", str(e.exception.details))
+            self.assertIn("Fully qualified namespace is too long", str(e.exception.details.values()))
+            self.assertIn(f"Max: {self.max_name_length}", str(e.exception.details.values()))
 
 
     def expected_check_streams(self):
@@ -287,14 +277,15 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
         for k,v in record_count_by_stream.items():
             self.assertGreaterEqual(v, 6)
 
-        # Verify that we got 2 records with _SDC_DELETED_AT
-        self.assertEqual(2, len([x['data'] for x in records_by_stream[self.coll_name_1]
-                                 if x['data'].get('_sdc_deleted_at')]))
-        self.assertEqual(2, len([x['data'] for x in records_by_stream[self.coll_name_2]
-                                 if x['data'].get('_sdc_deleted_at')]))
-        # Verify that the _id of the records sent are the same set as the
-        # _ids of the documents changed
-        actual = set(
-            [ObjectId(x['data']['_id']) for x in records_by_stream[self.coll_name_1]]).union(set(
-                [ObjectId(x['data']['_id']) for x in records_by_stream[self.coll_name_2]]))
-        self.assertEqual(changed_ids, actual)
+        actual_ids = set()
+        for stream in self.expected_sync_streams():
+            # Verify that we got 2 records with _SDC_DELETED_AT
+            self.assertEqual(2, len([x['data'] for x in records_by_stream[stream]
+                                     if x['data'].get('_sdc_deleted_at')]))
+
+            # Verify that the _id of the records sent are the same set as the
+            # _ids of the documents changed
+            ids = {ObjectId(x['data']['_id']) for x in records_by_stream[stream]}
+            actual_ids.update(ids)
+
+        self.assertEqual(changed_ids, actual_ids)

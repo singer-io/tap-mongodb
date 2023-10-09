@@ -3,6 +3,7 @@ import random
 import string
 import unittest
 from bson import ObjectId
+from pymongo.errors import BulkWriteError, WriteError
 
 from mongodb_common import drop_all_collections, ensure_environment_variables_set, \
     get_test_connection
@@ -55,18 +56,16 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(100))
 
             if self.db_version == '4.4.6':
-                with self.assertRaises(Exception) as e:
+                with self.assertRaises(BulkWriteError) as e:
                     # simple_coll_3 has 10 documents
                     client["simple_db"]["simple_coll_3"].insert_many(generate_leading_coll_docs(10))
 
                 e_error = "Document can't have $ prefixed field names"
-                self.assertIn('pymongo.errors.BulkWriteError', str(e.exception.__class__))
-                self.assertIn(e_error, str(e.exception.details))
+                self.assertIn(e_error, str(e.exception.details.values()))
 
             else:
                 # simple_coll_3 has 10 documents
                 client["simple_db"]["simple_coll_3"].insert_many(generate_leading_coll_docs(10))
-
 
     def expected_check_streams(self):
         if self.db_version == '4.4.6':
@@ -294,25 +293,23 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                 object_id = client['simple_db']['simple_coll_3'].find()[sec_last_index]['_id']
                 changed_ids.add(object_id)  # this results in empty field and does not replicate
                 failed_update_ids.add(object_id)
-                with self.assertRaises(Exception) as e1:
+                with self.assertRaises(WriteError) as e1:
                     client["simple_db"]["simple_coll_3"].update_one(
                         {'_id': object_id},{'$set': {'.int_field': -1}})
 
                 e1_error = ".int_field' contains an empty field name, which is not allowed"
-                self.assertIn('pymongo.errors.WriteError', str(e1.exception.__class__))
-                self.assertIn(e1_error, str(e1.exception.details))
+                self.assertIn(e1_error, str(e1.exception.details.values()))
 
                 object_id = client['simple_db']['simple_coll_3'].find()[last_index]['_id']
                 changed_ids.add(object_id)
                 failed_update_ids.add(object_id)
-                with self.assertRaises(Exception) as e2:
+                with self.assertRaises(WriteError) as e2:
                     client["simple_db"]["simple_coll_3"].update_one(
                         {'_id': object_id},{'$set': {'$string_field': "Updated_3"}})
 
                 e2_error = ( "The dollar ($) prefixed field '$string_field' in '$string_field' is not "
                              "allowed in the context of an update's replacement document." )
-                self.assertIn('pymongo.errors.WriteError', str(e2.exception.__class__))
-                self.assertIn(e2_error, str(e2.exception.details))
+                self.assertIn(e2_error, str(e2.exception.details.values()))
 
             # Insert two documents for each collection
             last_index = len(list(client['simple_db']['simple_coll_1'].find()))
@@ -384,23 +381,16 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             else:
                 self.assertGreaterEqual(v, 5)
 
-        # Verify that we got 2 records with _SDC_DELETED_AT
-        self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_1']
-                                 if x['data'].get('_sdc_deleted_at')]))
-        self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_2']
-                                 if x['data'].get('_sdc_deleted_at')]))
-        if self.db_version != '4.4.6':
-            self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_3']
+        actual = set()
+        for stream in self.expected_sync_streams():
+            # Verify that we got 2 records with _SDC_DELETED_AT
+            self.assertEqual(2, len([x['data'] for x in records_by_stream[stream]
                                      if x['data'].get('_sdc_deleted_at')]))
 
-        # Verify that the _id of the records sent are the same set as the
-        # _ids of the documents changed
-        actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_1']]).union(
-            set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_2']]))
-
-        if self.db_version != '4.4.6':
-            actual = actual.union(set([ObjectId(x['data']['_id']) for x
-                                       in records_by_stream['simple_coll_3']]))
+            # Verify that the _id of the records sent are the same set as the
+            # _ids of the documents changed
+            ids = {ObjectId(x['data']['_id']) for x in records_by_stream[stream]}
+            actual.update(ids)
 
         adjusted_changed_ids = changed_ids.difference(failed_update_ids)
         adjusted_actual_ids = actual.difference(failed_update_ids)
