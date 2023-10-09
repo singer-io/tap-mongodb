@@ -375,7 +375,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         # Verify that we got at least 5 records due to changes
         # (could be more due to overlap in gte oplog clause)
         for k,v in record_count_by_stream.items():
-            self.assertGreaterEqual(v, 5)
+            # updates for fields with leading . or $ characters may not replicate
+            if k == 'simple_coll_3':
+                self.assertGreaterEqual(v, 4)
+            else:
+                self.assertGreaterEqual(v, 5)
 
         # Verify that we got 2 records with _SDC_DELETED_AT
         self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_1']
