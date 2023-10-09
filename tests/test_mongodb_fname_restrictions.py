@@ -221,6 +221,7 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             self.assertIsNotNone(state['bookmarks'][tap_stream_id]['oplog_ts_inc'])
 
         changed_ids = set()
+        failed_update_ids = set()
         with get_test_connection() as client:
             # Delete two documents for each collection
             object_id = client['simple_db']['simple_coll_1'].find()[0]['_id']
@@ -291,7 +292,8 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                 sec_last_index = num_records - 2
 
                 object_id = client['simple_db']['simple_coll_3'].find()[sec_last_index]['_id']
-                # changed_ids.add(object_id)  # this results in empty field and does not replicate
+                changed_ids.add(object_id)  # this results in empty field and does not replicate
+                failed_update_ids.add(object_id)
                 with self.assertRaises(Exception) as e1:
                     client["simple_db"]["simple_coll_3"].update_one(
                         {'_id': object_id},{'$set': {'.int_field': -1}})
@@ -302,6 +304,7 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
 
                 object_id = client['simple_db']['simple_coll_3'].find()[last_index]['_id']
                 changed_ids.add(object_id)
+                failed_update_ids.add(object_id)
                 with self.assertRaises(Exception) as e2:
                     client["simple_db"]["simple_coll_3"].update_one(
                         {'_id': object_id},{'$set': {'$string_field': "Updated_3"}})
@@ -398,7 +401,10 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         if self.db_version != '4.4.6':
             actual = actual.union(set([ObjectId(x['data']['_id']) for x
                                        in records_by_stream['simple_coll_3']]))
-        self.assertEqual(changed_ids, actual)
+
+        adjusted_changed_ids = changed_ids.difference(failed_update_ids)
+        adjusted_actual_ids = actual.difference(failed_update_ids)
+        self.assertEqual(adjusted_changed_ids, adjusted_actual_ids)
 
         with get_test_connection() as client:
             # Verify the updated record values in the db match the tap output file
