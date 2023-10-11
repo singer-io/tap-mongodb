@@ -381,19 +381,18 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             else:
                 self.assertGreaterEqual(v, 5)
 
-        actual = set()
         for stream in self.expected_sync_streams():
             # Verify that we got 2 records with _SDC_DELETED_AT
             self.assertEqual(2, len([x['data'] for x in records_by_stream[stream]
                                      if x['data'].get('_sdc_deleted_at')]))
 
-            # Verify that the _id of the records sent are the same set as the
-            # _ids of the documents changed
-            ids = {ObjectId(x['data']['_id']) for x in records_by_stream[stream]}
-            actual.update(ids)
+        # Verify that the _id of the records sent are the same set as the
+        # _ids of the documents changed
+        actual_ids = {ObjectId(x['data']['_id']) for stream in self.expected_sync_streams()
+                      for x in records_by_stream[stream]}
 
         adjusted_changed_ids = changed_ids.difference(failed_update_ids)
-        adjusted_actual_ids = actual.difference(failed_update_ids)
+        adjusted_actual_ids = actual_ids.difference(failed_update_ids)
         self.assertEqual(adjusted_changed_ids, adjusted_actual_ids)
 
         with get_test_connection() as client:
