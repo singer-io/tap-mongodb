@@ -27,7 +27,7 @@ def generate_simple_coll_docs(num_docs):
 def generate_leading_coll_docs(num_docs):
     docs = []
     for int_value in range(num_docs):
-        # TDL-20088. Version 4.2 does not support leading "." or leading "$" in
+        # TDL-20088. Versions 4.2 and 4.4 do not support leading "." or leading "$" in
         # field names. Also unsupported: use of field names with "." in find() queries
         docs.append({".int_field": int_value, "$string_field": random_string_generator()})
     return docs
@@ -55,9 +55,9 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             # simple_coll_2 has 100 documents
             client["simple_db"]["simple_coll_2"].insert_many(generate_simple_coll_docs(100))
 
-            if self.db_version == '4.4.6':
+            if self.db_version == '4.4.6':  # TODO add 4.2 if image is available to test against
                 with self.assertRaises(BulkWriteError) as e:
-                    # simple_coll_3 has 10 documents
+                    # simple_coll_3 attempts to insert 10 documents
                     client["simple_db"]["simple_coll_3"].insert_many(generate_leading_coll_docs(10))
 
                 e_error = "Document can't have $ prefixed field names"
@@ -73,12 +73,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                 'simple_db-simple_coll_1',
                 'simple_db-simple_coll_2',
             }
-        else:
-            return {
-                'simple_db-simple_coll_1',
-                'simple_db-simple_coll_2',
-                'simple_db-simple_coll_3',
-            }
+        return {
+            'simple_db-simple_coll_1',
+            'simple_db-simple_coll_2',
+            'simple_db-simple_coll_3',
+        }
 
     def expected_pks(self):
         if self.db_version == '4.4.6':
@@ -86,12 +85,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                 'simple_coll_1': {'_id'},
                 'simple_coll_2': {'_id'},
             }
-        else:
-            return {
-                'simple_coll_1': {'_id'},
-                'simple_coll_2': {'_id'},
-                'simple_coll_3': {'_id'},
-            }
+        return {
+            'simple_coll_1': {'_id'},
+            'simple_coll_2': {'_id'},
+            'simple_coll_3': {'_id'},
+        }
 
     def expected_row_counts(self):
         if self.db_version == '4.4.6':
@@ -99,12 +97,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                 'simple_coll_1': 50,
                 'simple_coll_2': 100,
             }
-        else:
-            return {
-                'simple_coll_1': 50,
-                'simple_coll_2': 100,
-                'simple_coll_3': 10,
-            }
+        return {
+            'simple_coll_1': 50,
+            'simple_coll_2': 100,
+            'simple_coll_3': 10,
+        }
 
     def expected_sync_streams(self):
         if self.db_version == '4.4.6':
@@ -112,12 +109,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
                 'simple_coll_1',
                 'simple_coll_2',
             }
-        else:
-            return {
-                'simple_coll_1',
-                'simple_coll_2',
-                'simple_coll_3',
-            }
+        return {
+            'simple_coll_1',
+            'simple_coll_2',
+            'simple_coll_3',
+        }
 
     def name(self):
         return "tap_tester_mongodb_fname_restrict"

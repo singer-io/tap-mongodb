@@ -10,11 +10,11 @@ from argparse import RawTextHelpFormatter
 image_name = "singerio/mongo"
 
 # organize command options based on image_tag
-command_opts = {  # top level keys = supported image_tag versions
-    '4.2-bionic': {'shell': 'mongo'},  # version 5.0.15 TODO Remove?
-    '4.4-bionic': {'shell': 'mongo'},  # version 4.4.6, also supports mongosh?
-    '5.0': {'shell': 'mongosh'},       # version 5.0.15, also supports mongo
-    '6.0': {'shell': 'mongosh'},       # version 6.0.4
+command_opts = {  # top level keys = supported image_tag versions, values = shell
+    '4.2-bionic': 'mongo',  # version 5.0.15 TODO Remove?
+    '4.4-bionic': 'mongo',  # version 4.4.6, also supports mongosh?
+    '5.0': 'mongosh',       # version 5.0.15, also supports mongo
+    '6.0': 'mongosh',       # version 6.0.4
 }
 
 def start_container(name, image_tag):
@@ -45,9 +45,10 @@ def start_container(name, image_tag):
     ip_addr = get_ip_addr(name)
     # If using image_version <=4.4.0-bionic use mongo, not mongosh
     CONFIGURE_COMMAND = """
-     docker exec mongo1 {} --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
+     docker exec {} {} --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
     """.format(
-        command_opts[image_tag]['shell'],
+        name,
+        command_opts[image_tag],
         ip_addr,
         os.getenv('TAP_MONGODB_USER'),
         os.getenv('TAP_MONGODB_PASSWORD'),
@@ -79,11 +80,11 @@ def connect_to_db(name, image_tag):
     ip_addr = get_ip_addr(name)
 
     print("Attempting to connect to running container using a mongo container")
-    # Note: Shell is determined based on user provided image_tag, connect may fail if the user
-    #       provided shell is not supported for the running DB version.
+    # Note: Shell is determined based on user provided image_tag, connect may fail if the shell
+    #       associated with the user provided image_tag is not supported by the running DB version.
     connect_command_format = CONNECT_COMMAND.format(image_name,
                                                     image_tag,
-                                                    command_opts[image_tag]['shell'],
+                                                    command_opts[image_tag],
                                                     ip_addr,
                                                     os.getenv('TAP_MONGODB_USER'),
                                                     os.getenv('TAP_MONGODB_PASSWORD'))
@@ -116,7 +117,6 @@ def main():
         stop_container(parsed_args.name)
     elif parsed_args.action == 'connect':
         connect_to_db(parsed_args.name, parsed_args.image_tag)
-    # print(parsed_args)
 
 if __name__ == "__main__":
     main()
