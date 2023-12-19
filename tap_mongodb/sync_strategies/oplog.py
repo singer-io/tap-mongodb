@@ -142,17 +142,15 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
     update_buffer = set()
     schema = {"type": "object", "properties": {}}
 
-
     # Get the current time for the purposes of periodically refreshing the session
     session_refresh_time = time.time()
 
-    # consider adding oplog_replay, but this would require removing the projection
-    # default behavior is a non_tailable cursor but we might want a tailable one
-    # regardless of whether its long lived or not.
-
-
     # Create a session so that we can periodically send a simple command to keep it alive
     with client.start_session() as session:
+
+        # consider adding oplog_replay, but this would require removing the projection
+        # default behavior is a non_tailable cursor but we might want a tailable one
+        # regardless of whether its long lived or not.
         with client.local.oplog.rs.find(
                 oplog_query,
                 projection,
