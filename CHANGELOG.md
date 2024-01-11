@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.0.3
+  * Refresh the session every 10 minutes during oplog queries [#110](https://github.com/singer-io/tap-mongodb/pull/110)
+
 ## 3.0.2
   * Fix an issue with connection params when SSL is used [#107](https://github.com/singer-io/tap-mongodb/pull/107)
 
