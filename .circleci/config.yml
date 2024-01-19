@@ -5,7 +5,7 @@ orbs:
 executors:
   tap_tester_mongo_4_4:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-3-11-dev
       - image: singerio/mongo:4.4-bionic
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -13,7 +13,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
   tap_tester_mongo_5_0:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-3-11-dev
       - image: singerio/mongo:5.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -21,7 +21,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
   tap_tester_mongo_6_0:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-3-11-dev
       - image: singerio/mongo:6.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -77,8 +77,8 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==4.4.0
-            nosetests tests/unittests/
+            pip install pymongo==4.4.0 nose2
+            nose2 -v -s tests/unittests/
       - run:
           name: 'Integration Tests'
           command: |
@@ -145,8 +145,8 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==4.4.0
-            nosetests tests/unittests/
+            pip install pymongo==4.4.0 nose2
+            nose2 -v -s tests/unittests/
       - run:
           name: 'Integration Tests'
           command: |
@@ -213,8 +213,8 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==4.4.0
-            nosetests tests/unittests/
+            pip install pymongo==4.4.0 nose2
+            nose2 -v -s tests/unittests/
       - run:
           name: 'Integration Tests'
           command: |
