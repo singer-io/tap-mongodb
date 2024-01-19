@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.0
+  * Updates to run on python 3.11.7 [#111](https://github.com/singer-io/tap-mongodb/pull/111)
+
 ## 3.0.3
   * Refresh the session every 10 minutes during oplog queries [#110](https://github.com/singer-io/tap-mongodb/pull/110)
 
