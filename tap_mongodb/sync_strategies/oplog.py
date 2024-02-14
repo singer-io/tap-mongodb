@@ -115,7 +115,7 @@ def maybe_get_session(client):
     that will work in the context manager
     '''
     try:
-        return client.start_session():
+        return client.start_session()
     except ConfigurationError:
         # log sessions not available
         LOGGER.info('Unable to start session, without session')
