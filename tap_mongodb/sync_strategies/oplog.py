@@ -3,9 +3,11 @@ import time
 import pymongo
 import singer
 from singer import metadata, utils
+from pymongo.errors import ConfigurationError
 
 from bson import timestamp
 import tap_mongodb.sync_strategies.common as common
+
 
 LOGGER = singer.get_logger()
 
@@ -101,6 +103,25 @@ def flush_buffer(client, update_buffer, stream_projection, db_name, collection_n
         for row in cursor:
             yield row
 
+class SessionNotAvailable():
+    def __enter__(self, *args):
+        pass
+    def __exit__(self, *args):
+        pass
+
+def maybe_get_session(client):
+    '''
+    Try to get a session. If sessions are not available to us then return an object
+    that will work in the context manager
+    '''
+    try:
+        return client.start_session():
+    except ConfigurationError:
+        # log sessions not available
+        LOGGER.info('Unable to start session, without session')
+        # return an object that works with a 'with' block
+        return SessionNotAvailable()
+
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None):
@@ -146,7 +167,9 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
     session_refresh_time = time.time()
 
     # Create a session so that we can periodically send a simple command to keep it alive
-    with client.start_session() as session:
+    with maybe_get_session(client) as session:
+
+        have_session = not isinstance(session, SessionNotAvailable)
 
         # consider adding oplog_replay, but this would require removing the projection
         # default behavior is a non_tailable cursor but we might want a tailable one
@@ -156,11 +179,11 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                 projection,
                 sort=[('$natural', pymongo.ASCENDING)],
                 oplog_replay=oplog_replay,
-                session=session,
+                session=session if have_session else None,
                 no_cursor_timeout=True
         ) as cursor:
             # Refresh the session every 10 minutes to keep it alive
-            if time.time() - session_refresh_time > 600:
+            if have_session and time.time() - session_refresh_time > 600:
                 client.local.command('ping', session=session)
                 session_refresh_time = time.time()
 
