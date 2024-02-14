@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.1
+  * Gracefully fallback to not using a session if sessions are not supported by the mongo server [#112](https://github.com/singer-io/tap-mongodb/pull/112)
+
 ## 3.1.0
   * Updates to run on python 3.11.7 [#111](https://github.com/singer-io/tap-mongodb/pull/111)
 
