@@ -8,8 +8,12 @@ import tap_mongodb.sync_strategies.common as common
 
 LOGGER = singer.get_logger()
 
-def get_max_id_value(collection):
-    row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
+def get_max_id_value(collection, projection=None):
+    if projection is None:
+        row = collection.find_one(sort=[("_id", pymongo.DESCENDING)])
+    else:
+        row = collection.find_one(sort=[("_id", pymongo.DESCENDING)],
+                                  projection=projection)
     if row:
         return row['_id']
 
@@ -64,7 +68,7 @@ def sync_collection(client, stream, state, projection):
         max_id_type = singer.get_bookmark(state, stream['tap_stream_id'], 'max_id_type')
         max_id_value = common.string_to_class(max_id_value, max_id_type)
     else:
-        max_id_value = get_max_id_value(collection)
+        max_id_value = get_max_id_value(collection, projection)
 
     last_id_fetched = singer.get_bookmark(state,
                                           stream['tap_stream_id'],

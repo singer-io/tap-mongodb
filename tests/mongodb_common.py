@@ -1,5 +1,6 @@
 import os
 import pymongo
+from tap_tester.logger import LOGGER
 
 
 def ensure_environment_variables_set():
@@ -20,9 +21,10 @@ def get_test_connection():
     password = os.getenv('TAP_MONGODB_PASSWORD')
     host= os.getenv('TAP_MONGODB_HOST')
     auth_source = os.getenv('TAP_MONGODB_DBNAME')
-    port = os.getenv('TAP_MONGODB_PORT')
+    port = int(os.getenv('TAP_MONGODB_PORT'))
     ssl = False
-    conn = pymongo.MongoClient(host=host, username=username, password=password, port=27017, authSource=auth_source, ssl=ssl)
+    conn = pymongo.MongoClient(host=host, username=username, password=password, port=port,
+                               authSource=auth_source, ssl=ssl, uuidRepresentation='standard')
     return conn
 
 def drop_all_collections(client):
@@ -33,5 +35,5 @@ def drop_all_collections(client):
         for collection_name in client[db_name].list_collection_names():
             if collection_name in ['system.views', 'system.version', 'system.keys', 'system.users']:
                 continue
-            print("Dropping database: " + db_name + ", collection: " + collection_name)
+            LOGGER.info("Dropping database: " + db_name + ", collection: " + collection_name)
             client[db_name][collection_name].drop()

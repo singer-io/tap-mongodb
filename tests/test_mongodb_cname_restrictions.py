@@ -219,7 +219,8 @@ class MongoDBCollectionNameRestrictions(unittest.TestCase):
         messages_by_stream = runner.get_records_from_target_output()
         records_by_stream = {}
         for stream_name in self.expected_sync_streams():
-            records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages'] if x.get('action') == 'upsert']
+            records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages']
+                                              if x.get('action') == 'upsert']
 
         # assert that each of the streams that we synced are the ones that we expect to see
         record_count_by_stream = runner.examine_target_output_file(self,
@@ -233,9 +234,11 @@ class MongoDBCollectionNameRestrictions(unittest.TestCase):
             self.assertGreaterEqual(v, 6)
 
         # Verify that we got 2 records with _SDC_DELETED_AT
-        self.assertEqual(2, len([x['data'] for x in records_by_stream['1_simple_coll'] if x['data'].get('_sdc_deleted_at')]))
-        self.assertEqual(2, len([x['data'] for x in records_by_stream['_simple_coll_2'] if x['data'].get('_sdc_deleted_at')]))
+        for stream in self.expected_sync_streams():
+            self.assertEqual(2, len([x['data'] for x in records_by_stream[stream]
+                                     if x['data'].get('_sdc_deleted_at')]))
         # Verify that the _id of the records sent are the same set as the
         # _ids of the documents changed
-        actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['1_simple_coll']]).union(set([ObjectId(x['data']['_id']) for x in records_by_stream['_simple_coll_2']]))
-        self.assertEqual(changed_ids, actual)
+        actual_ids = {ObjectId(x['data']['_id']) for stream in self.expected_sync_streams()
+                      for x in records_by_stream[stream]}
+        self.assertEqual(changed_ids, actual_ids)

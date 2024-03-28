@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.1.1
+  * Gracefully fallback to not using a session if sessions are not supported by the mongo server [#112](https://github.com/singer-io/tap-mongodb/pull/112)
+
+## 3.1.0
+  * Updates to run on python 3.11.7 [#111](https://github.com/singer-io/tap-mongodb/pull/111)
+
+## 3.0.3
+  * Refresh the session every 10 minutes during oplog queries [#110](https://github.com/singer-io/tap-mongodb/pull/110)
+
+## 3.0.2
+  * Fix an issue with connection params when SSL is used [#107](https://github.com/singer-io/tap-mongodb/pull/107)
+
+## 3.0.1
+  * Fix issue with SSH tunnel connections by connecting directly to a MongoDB node instead of allowing PyMongo to automatically discover replica sets [#105](https://github.com/singer-io/tap-mongodb/pull/105)
+
+## 3.0.0
+  * Upgrade PyMongo to v4.3+ [#99](https://github.com/singer-io/tap-mongodb/pull/99)
+  * Fix uuid transformation [#100](https://github.com/singer-io/tap-mongodb/pull/100)
+  * Fix empty projection [#102](https://github.com/singer-io/tap-mongodb/pull/102)
+
+## 2.1.3
+  * Fix a bug in Full Table sync that caused a sync to fail if document contained invalid BSON[#95](https://github.com/singer-io/tap-mongodb/pull/95)
+
 ## 2.1.2
   * Update pymongo to v3.12.3 [#81](https://github.com/singer-io/tap-mongodb/pull/81)
 

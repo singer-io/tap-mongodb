@@ -3,9 +3,11 @@ import time
 import pymongo
 import singer
 from singer import metadata, utils
+from pymongo.errors import ConfigurationError
 
 from bson import timestamp
 import tap_mongodb.sync_strategies.common as common
+
 
 LOGGER = singer.get_logger()
 
@@ -103,6 +105,25 @@ def flush_buffer(client, update_buffer, stream_projection, db_name, collection_n
         for row in cursor:
             yield row
 
+class SessionNotAvailable():
+    def __enter__(self, *args):
+        pass
+    def __exit__(self, *args):
+        pass
+
+def maybe_get_session(client):
+    '''
+    Try to get a session. If sessions are not available to us then return an object
+    that will work in the context manager
+    '''
+    try:
+        return client.start_session()
+    except ConfigurationError:
+        # log sessions not available
+        LOGGER.info('Unable to start session, without session')
+        # return an object that works with a 'with' block
+        return SessionNotAvailable()
+
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None):
@@ -143,113 +164,129 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
 
     update_buffer = set()
     schema = {"type": "object", "properties": {}}
-    # consider adding oplog_replay, but this would require removing the projection
-    # default behavior is a non_tailable cursor but we might want a tailable one
-    # regardless of whether its long lived or not.
-    with client.local.oplog.rs.find(
-            oplog_query,
-            projection,
-            sort=[('$natural', pymongo.ASCENDING)],
-            oplog_replay=oplog_replay
-    ) as cursor:
-        for row in cursor:
-            # assertions that mongo is respecing the ts query and sort order
-            if row.get('ts') and row.get('ts') < oplog_ts:
-                raise common.MongoAssertionException("Mongo is not honoring the query param")
-            if row.get('ts') and row.get('ts') < timestamp.Timestamp(stream_state['oplog_ts_time'],
-                                                                     stream_state['oplog_ts_inc']):
-                raise common.MongoAssertionException(
-                    "Mongo is not honoring the sort ascending param")
 
-            row_op = row['op']
+    # Get the current time for the purposes of periodically refreshing the session
+    session_refresh_time = time.time()
 
-            if row_op == 'i':
-                write_schema(schema, row['o'], stream)
-                record_message = common.row_to_singer_record(stream,
-                                                             row['o'],
-                                                             version,
-                                                             time_extracted)
-                singer.write_message(record_message)
+    # Create a session so that we can periodically send a simple command to keep it alive
+    with maybe_get_session(client) as session:
 
-                rows_saved += 1
+        have_session = not isinstance(session, SessionNotAvailable)
 
-            elif row_op == 'u':
-                update_buffer.add(row['o2']['_id'])
+        # consider adding oplog_replay, but this would require removing the projection
+        # default behavior is a non_tailable cursor but we might want a tailable one
+        # regardless of whether its long lived or not.
+        with client.local.oplog.rs.find(
+                oplog_query,
+                projection,
+                sort=[('$natural', pymongo.ASCENDING)],
+                oplog_replay=oplog_replay,
+                session=session if have_session else None,
+                no_cursor_timeout=True
+        ) as cursor:
+            # Refresh the session every 10 minutes to keep it alive
+            if have_session and time.time() - session_refresh_time > 600:
+                client.local.command('ping', session=session)
+                session_refresh_time = time.time()
 
-            elif row_op == 'd':
+            for row in cursor:
+                # assertions that mongo is respecing the ts query and sort order
+                if row.get('ts') and row.get('ts') < oplog_ts:
+                    raise common.MongoAssertionException("Mongo is not honoring the query param")
+                if row.get('ts') and row.get('ts') < timestamp.Timestamp(stream_state['oplog_ts_time'],
+                                                                        stream_state['oplog_ts_inc']):
+                    raise common.MongoAssertionException(
+                        "Mongo is not honoring the sort ascending param")
 
-                # remove update from buffer if that document has been deleted
-                if row['o']['_id'] in update_buffer:
-                    update_buffer.remove(row['o']['_id'])
+                row_op = row['op']
 
-                # Delete ops only contain the _id of the row deleted
-                row['o'][SDC_DELETED_AT] = row['ts']
-
-                write_schema(schema, row['o'], stream)
-                record_message = common.row_to_singer_record(stream,
-                                                             row['o'],
-                                                             version,
-                                                             time_extracted)
-                singer.write_message(record_message)
-
-                rows_saved += 1
-
-            state = update_bookmarks(state,
-                                     tap_stream_id,
-                                     row['ts'])
-
-            # flush buffer if it has filled up
-            if len(update_buffer) >= MAX_UPDATE_BUFFER_LENGTH:
-                for buffered_row in flush_buffer(client,
-                                                 update_buffer,
-                                                 stream_projection,
-                                                 database_name,
-                                                 collection_name):
-                    write_schema(schema, buffered_row, stream)
+                if row_op == 'i':
+                    write_schema(schema, row['o'], stream)
                     record_message = common.row_to_singer_record(stream,
-                                                                 buffered_row,
-                                                                 version,
-                                                                 time_extracted)
+                                                                row['o'],
+                                                                version,
+                                                                time_extracted)
                     singer.write_message(record_message)
 
                     rows_saved += 1
-                update_buffer = set()
 
-            # write state every UPDATE_BOOKMARK_PERIOD messages
-            if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
-                # flush buffer before writing state
-                for buffered_row in flush_buffer(client,
-                                                 update_buffer,
-                                                 stream_projection,
-                                                 database_name,
-                                                 collection_name):
-                    write_schema(schema, buffered_row, stream)
+                elif row_op == 'u':
+                    update_buffer.add(row['o2']['_id'])
+
+                elif row_op == 'd':
+
+                    # remove update from buffer if that document has been deleted
+                    if row['o']['_id'] in update_buffer:
+                        update_buffer.remove(row['o']['_id'])
+
+                    # Delete ops only contain the _id of the row deleted
+                    row['o'][SDC_DELETED_AT] = row['ts']
+
+                    write_schema(schema, row['o'], stream)
                     record_message = common.row_to_singer_record(stream,
-                                                                 buffered_row,
-                                                                 version,
-                                                                 time_extracted)
+                                                                row['o'],
+                                                                version,
+                                                                time_extracted)
                     singer.write_message(record_message)
 
                     rows_saved += 1
-                update_buffer = set()
 
-                # write state
-                singer.write_message(singer.StateMessage(value=state))
+                state = update_bookmarks(state,
+                                        tap_stream_id,
+                                        row['ts'])
 
-        # flush buffer if finished with oplog
-        for buffered_row in flush_buffer(client,
-                                         update_buffer,
-                                         stream_projection,
-                                         database_name,
-                                         collection_name):
-            write_schema(schema, buffered_row, stream)
-            record_message = common.row_to_singer_record(stream,
-                                                         buffered_row,
-                                                         version,
-                                                         time_extracted)
+                # flush buffer if it has filled up
+                if len(update_buffer) >= MAX_UPDATE_BUFFER_LENGTH:
+                    for buffered_row in flush_buffer(client,
+                                                    update_buffer,
+                                                    stream_projection,
+                                                    database_name,
+                                                    collection_name):
+                        write_schema(schema, buffered_row, stream)
+                        record_message = common.row_to_singer_record(stream,
+                                                                    buffered_row,
+                                                                    version,
+                                                                    time_extracted)
+                        singer.write_message(record_message)
 
-            singer.write_message(record_message)
-            rows_saved += 1
+                        rows_saved += 1
+                    update_buffer = set()
+
+                # write state every UPDATE_BOOKMARK_PERIOD messages
+                if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
+                    # flush buffer before writing state
+                    for buffered_row in flush_buffer(client,
+                                                    update_buffer,
+                                                    stream_projection,
+                                                    database_name,
+                                                    collection_name):
+                        write_schema(schema, buffered_row, stream)
+                        record_message = common.row_to_singer_record(stream,
+                                                                    buffered_row,
+                                                                    version,
+                                                                    time_extracted)
+                        singer.write_message(record_message)
+
+                        rows_saved += 1
+                    update_buffer = set()
+
+                    # write state
+                    singer.write_message(singer.StateMessage(value=state))
+
+            # flush buffer if finished with oplog
+            for buffered_row in flush_buffer(client,
+                                            update_buffer,
+                                            stream_projection,
+                                            database_name,
+                                            collection_name):
+                write_schema(schema, buffered_row, stream)
+                record_message = common.row_to_singer_record(stream,
+                                                            buffered_row,
+                                                            version,
+                                                            time_extracted)
+
+                singer.write_message(record_message)
+                rows_saved += 1
 
 
     # Compare the current bookmark with the max_oplog_ts and write the max

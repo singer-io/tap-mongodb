@@ -5,7 +5,7 @@ import ssl
 import sys
 import time
 import pymongo
-from bson import timestamp
+from bson.codec_options import DatetimeConversion
 
 import singer
 from singer import metadata, metrics, utils
@@ -233,7 +233,10 @@ def write_schema_message(stream):
 def load_stream_projection(stream):
     md_map = metadata.to_map(stream['metadata'])
     stream_projection = metadata.get(md_map, (), 'tap-mongodb.projection')
-    if stream_projection == '' or stream_projection == '""' or not stream_projection:
+    if (stream_projection == ''
+        or stream_projection == '""'
+        or stream_projection == '{}'
+        or not stream_projection):
         return None
 
     try:
@@ -366,11 +369,13 @@ def main_impl():
                          "authSource": config['database'],
                          "ssl": use_ssl,
                          "replicaset": config.get('replica_set', None),
-                         "readPreference": 'secondaryPreferred'}
+                         "readPreference": 'secondaryPreferred',
+                         "datetime_conversion": DatetimeConversion.DATETIME_AUTO,
+                         "directConnection": True}
 
     # NB: "ssl_cert_reqs" must ONLY be supplied if `SSL` is true.
     if not verify_mode and use_ssl:
-        connection_params["ssl_cert_reqs"] = ssl.CERT_NONE
+        connection_params["tlsAllowInvalidCertificates"] = True
 
     client = pymongo.MongoClient(**connection_params)
 

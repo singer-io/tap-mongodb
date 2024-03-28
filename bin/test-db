@@ -6,15 +6,25 @@ import subprocess
 import time
 from argparse import RawTextHelpFormatter
 
-image_name = "mongo"
-image_tag = "4.2.0-bionic"
+# singerio images have required keyfile
+image_name = "singerio/mongo"
 
-def start_container(name):
+# organize command options based on image_tag
+command_opts = {  # top level keys = supported image_tag versions, values = shell
+    '4.2-bionic': 'mongo',  # version 5.0.15 TODO Remove?
+    '4.4-bionic': 'mongo',  # version 4.4.6, also supports mongosh?
+    '5.0': 'mongosh',       # version 5.0.15, also supports mongo
+    '6.0': 'mongosh',       # version 6.0.4
+}
+
+def start_container(name, image_tag):
 
     START_COMMAND = """
-    sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}"\
+    sudo docker run -e "MONGO_INITDB_ROOT_USERNAME={0}" -e "MONGO_INITDB_ROOT_PASSWORD={1}" \
         -p {2}:{2} --name {3} \
-        -d {4}:{5} --replSet rs0
+        -d {4}:{5} \
+        --auth \
+        --keyFile /opt/mongo/keyfile --replSet rs0
     """.format(os.getenv('TAP_MONGODB_USER'),
                os.getenv('TAP_MONGODB_PASSWORD'),
                os.getenv('TAP_MONGODB_PORT'),
@@ -33,18 +43,21 @@ def start_container(name):
     time.sleep(5)
 
     ip_addr = get_ip_addr(name)
+    # If using image_version <=4.4.0-bionic use mongo, not mongosh
     CONFIGURE_COMMAND = """
-    docker run --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
-    """.format(ip_addr,
-               os.getenv('TAP_MONGODB_USER'),
-               os.getenv('TAP_MONGODB_PASSWORD'),
-               '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
-    print(CONFIGURE_COMMAND)
+     docker exec {} {} --host {} test -u {} -p {} --authenticationDatabase admin --eval {}
+    """.format(
+        name,
+        command_opts[image_tag],
+        ip_addr,
+        os.getenv('TAP_MONGODB_USER'),
+        os.getenv('TAP_MONGODB_PASSWORD'),
+        '\'rs.initiate({_id: "rs0", members: [{_id: 0, host: "127.0.0.1:27017"}]})\'')
+    print("Initiate replSet using: {}".format(CONFIGURE_COMMAND))
     proc = subprocess.run(CONFIGURE_COMMAND, shell=True)
     if proc.returncode != 0:
         sys.exit("Exited with code: {}, the docker command failed.".format(proc.returncode))
-    print("Oploag configured correctly.")
-
+    print("Oplog configured correctly.")
 
 def get_ip_addr(name):
     IP_ADDR_COMMAND = "docker inspect {} | jq -r .[].NetworkSettings.IPAddress"
@@ -52,7 +65,6 @@ def get_ip_addr(name):
     ip_addr = subprocess.check_output(IP_ADDR_COMMAND.format(name), shell=True).decode('utf-8').rstrip()
     print(ip_addr)
     return ip_addr
-
 
 def stop_container(name):
     STOP_COMMAND = "sudo docker stop {0} && sudo docker rm {0}"
@@ -63,13 +75,17 @@ def stop_container(name):
         sys.exit("Exited with code: {}, the docker process failed to stop.".format(proc.returncode))
     print("Process stopped successfully")
 
-def connect_to_db(name):
-    CONNECT_COMMAND = "docker run -it --rm mongo mongo --host {} test -u {} -p {} --authenticationDatabase admin"
-
+def connect_to_db(name, image_tag):
+    CONNECT_COMMAND = "docker run -it --rm {}:{} {} --host {} test -u {} -p {} --authenticationDatabase admin"
     ip_addr = get_ip_addr(name)
 
     print("Attempting to connect to running container using a mongo container")
-    connect_command_format = CONNECT_COMMAND.format(ip_addr,
+    # Note: Shell is determined based on user provided image_tag, connect may fail if the shell
+    #       associated with the user provided image_tag is not supported by the running DB version.
+    connect_command_format = CONNECT_COMMAND.format(image_name,
+                                                    image_tag,
+                                                    command_opts[image_tag],
+                                                    ip_addr,
                                                     os.getenv('TAP_MONGODB_USER'),
                                                     os.getenv('TAP_MONGODB_PASSWORD'))
     print(connect_command_format)
@@ -90,16 +106,17 @@ Uses environment variables:
 parser = argparse.ArgumentParser(description=DESCRIPTION, formatter_class=RawTextHelpFormatter)
 parser.add_argument('action', choices=['start','stop', 'connect'], help='action to perform with the container')
 parser.add_argument('--name', help="name assigned to running docker process", default='mongo1')
+parser.add_argument('--image-tag', choices=command_opts.keys(), help='Supported image tags, default=6.0', default='6.0')
 
 def main():
     parsed_args = parser.parse_args()
     # Potential arguments to add: pull, changing docker cointainer, changing password
     if parsed_args.action == 'start':
-        start_container(parsed_args.name)
+        start_container(parsed_args.name, parsed_args.image_tag)
     elif parsed_args.action == 'stop':
         stop_container(parsed_args.name)
     elif parsed_args.action == 'connect':
-        connect_to_db(parsed_args.name)
+        connect_to_db(parsed_args.name, parsed_args.image_tag)
 
 if __name__ == "__main__":
     main()

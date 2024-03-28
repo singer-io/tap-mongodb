@@ -9,23 +9,29 @@ import uuid
 
 from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
 from tap_tester import connections, menagerie, runner
+from tap_tester.logger import LOGGER
 
 
 RECORD_COUNT = {}
 
 
-def run_mongodb_javascript(database, js):
+def run_mongodb_javascript(database, js, mongo_version):
     """
     Runs arbitrary javascript against the test Mongo instance. This is
     useful for setting up situations that Python can't handle (e.g.,
     datetime with year 0) for testing.
     """
-    print("Running '{}' against database '{}'".format(js, database))
-    cmd = ["mongo", "-u", os.getenv('TAP_MONGODB_USER'), "-p", os.getenv('TAP_MONGODB_PASSWORD'), "--authenticationDatabase", os.getenv('TAP_MONGODB_DBNAME'), database, "--eval", "eval('{}')".format(js)]
+    LOGGER.info("Running '{}' against database '{}'".format(js, database))
+
+    mongo_shell = "mongosh" if int(mongo_version.split(".")[0]) > 5 else "mongo"
+    cmd = [mongo_shell, "-u", os.getenv('TAP_MONGODB_USER'), "-p", os.getenv('TAP_MONGODB_PASSWORD'), "--authenticationDatabase", os.getenv('TAP_MONGODB_DBNAME'), database, "--eval", "eval('{}')".format(js)]
     subprocess.run(cmd)
 
 
 class MongoDBDatatype(unittest.TestCase):
+    # To compare large dictionaries
+    maxDiff = None
+
     def setUp(self):
         ensure_environment_variables_set()
 
@@ -71,7 +77,10 @@ class MongoDBDatatype(unittest.TestCase):
             client["datatype_db"]["datatype_coll_1"].insert_one(datatype_doc)
 
             # NB: Insert an invalid datetime to confirm that works correctly
-            run_mongodb_javascript("datatype_db", "db.invalid_datatype_coll.insert({ \"date_field\": new ISODate(\"0000-01-01T00:00:00.000Z\") });")
+            mongodb_version = client.server_info()["version"]
+            run_mongodb_javascript(database="datatype_db",
+                                   js="db.invalid_datatype_coll.insert({ \"date_field\": new ISODate(\"0000-01-01T00:00:00.000Z\") });",
+                                   mongo_version=mongodb_version)
 
     def expected_check_streams(self):
         return {
@@ -232,4 +241,8 @@ class MongoDBDatatype(unittest.TestCase):
                             "collection": "some_collection"}
         }
 
-        self.assertEquals(expected_record, records_by_stream['datatype_coll_1']['messages'][1]['data'])
+        dict_keys = list(expected_record.keys())
+        dict_keys.sort()
+
+        self.assertEquals({i: expected_record[i] for i in dict_keys},
+                          {i: records_by_stream['datatype_coll_1']['messages'][1]['data'][i] for i in dict_keys})

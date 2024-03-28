@@ -4,7 +4,8 @@ import string
 import unittest
 from bson import ObjectId
 
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from mongodb_common import drop_all_collections, ensure_environment_variables_set, \
+    get_test_connection
 from tap_tester import connections, menagerie, runner
 
 
@@ -60,7 +61,6 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             'simple_coll_2': 100,
         }
 
-
     def expected_sync_streams(self):
         return {
             'simple_coll_1',
@@ -109,8 +109,6 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         self.assertEqual(self.expected_check_streams(),
                          {c['tap_stream_id'] for c in found_catalogs})
 
-
-
         for tap_stream_id in self.expected_check_streams():
             found_stream = [c for c in found_catalogs if c['tap_stream_id'] == tap_stream_id][0]
 
@@ -129,11 +127,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         # Select simple_coll_1 and simple_coll_2 streams and add replication method metadata
         for stream_catalog in found_catalogs:
             annotated_schema = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
-            additional_md = [{ "breadcrumb" : [], "metadata" : {'replication-method' : 'LOG_BASED'}}]
+            additional_md = [{"breadcrumb" : [], "metadata" : {'replication-method' : 'LOG_BASED'}}]
             selected_metadata = connections.select_catalog_and_fields_via_metadata(conn_id,
-                                                                                    stream_catalog,
-                                                                                    annotated_schema,
-                                                                                    additional_md)
+                                                                                   stream_catalog,
+                                                                                   annotated_schema,
+                                                                                   additional_md)
 
         # Run sync
         sync_job_name = runner.run_sync_mode(self, conn_id)
@@ -152,7 +150,8 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
 
         # Verify that the full table was synced
         for tap_stream_id in self.expected_sync_streams():
-            self.assertGreaterEqual(record_count_by_stream[tap_stream_id],self.expected_row_counts()[tap_stream_id])
+            self.assertGreaterEqual(record_count_by_stream[tap_stream_id],
+                                    self.expected_row_counts()[tap_stream_id])
 
         # Verify that we have 'initial_full_table_complete' bookmark
         state = menagerie.get_state(conn_id)
@@ -190,48 +189,60 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             # Update two documents for each collection
 
             # curor objects do not support negative indicies so set indicies for last two records
-            num_records = client['simple_db']['simple_coll_1'].find().count()
+            num_records = len(list(client['simple_db']['simple_coll_1'].find()))
             last_index = num_records - 1
             sec_last_index = num_records -2
 
-            object_id = client['simple_db']['simple_coll_1'].find()[sec_last_index]['_id'] # int.field 48
+            # int.field 48
+            object_id = client['simple_db']['simple_coll_1'].find()[sec_last_index]['_id']
             changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            client["simple_db"]["simple_coll_1"].update_one(
+                {'_id': object_id},{'$set': {'int.field': -1}})
 
-            object_id = client['simple_db']['simple_coll_1'].find()[last_index]['_id'] # int.field 49
+            # int.field 49
+            object_id = client['simple_db']['simple_coll_1'].find()[last_index]['_id']
             changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_1"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            client["simple_db"]["simple_coll_1"].update_one(
+                {'_id': object_id},{'$set': {'int.field': -1}})
 
-            num_records = client['simple_db']['simple_coll_2'].find().count()
+            num_records = len(list(client['simple_db']['simple_coll_2'].find()))
             last_index = num_records - 1
             sec_last_index = num_records - 2
 
-            object_id = client['simple_db']['simple_coll_2'].find()[sec_last_index]['_id'] # int.field 98
+            # int.field 98
+            object_id = client['simple_db']['simple_coll_2'].find()[sec_last_index]['_id']
             changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            client["simple_db"]["simple_coll_2"].update_one(
+                {'_id': object_id},{'$set': {'int.field': -1}})
 
-            object_id = client['simple_db']['simple_coll_2'].find()[last_index]['_id'] # int.field 99
+            # int.field 99
+            object_id = client['simple_db']['simple_coll_2'].find()[last_index]['_id']
             changed_ids.add(object_id)
-            client["simple_db"]["simple_coll_2"].update_one({'_id': object_id},{'$set': {'int.field': -1}})
+            client["simple_db"]["simple_coll_2"].update_one(
+                {'_id': object_id},{'$set': {'int.field': -1}})
 
             # Insert two documents for each collection
-            last_index = client['simple_db']['simple_coll_1'].find().count()
-            client["simple_db"]["simple_coll_1"].insert_one({"int.field": 50, "string$field": random_string_generator()})
+            last_index = len(list(client['simple_db']['simple_coll_1'].find()))
+            client["simple_db"]["simple_coll_1"].insert_one(
+                {"int.field": 50, "string$field": random_string_generator()})
             object_id = client["simple_db"]["simple_coll_1"].find()[last_index]['_id']
             changed_ids.add(object_id)
 
             last_index += 1 # inserting a new item
-            client["simple_db"]["simple_coll_1"].insert_one({"int.field": 51, "string$field": random_string_generator()})
+            client["simple_db"]["simple_coll_1"].insert_one(
+                {"int.field": 51, "string$field": random_string_generator()})
             object_id = client["simple_db"]["simple_coll_1"].find()[last_index]['_id']
             changed_ids.add(object_id)
 
-            last_index = client['simple_db']['simple_coll_2'].find().count()
-            client["simple_db"]["simple_coll_2"].insert_one({"int.field": 100, "string$field": random_string_generator()})
+            last_index = len(list(client['simple_db']['simple_coll_2'].find()))
+            client["simple_db"]["simple_coll_2"].insert_one(
+                {"int.field": 100, "string$field": random_string_generator()})
             object_id = client["simple_db"]["simple_coll_2"].find()[last_index]['_id']
             changed_ids.add(object_id)
 
             last_index += 1
-            client["simple_db"]["simple_coll_2"].insert_one({"int.field": 101, "string$field": random_string_generator()})
+            client["simple_db"]["simple_coll_2"].insert_one(
+                {"int.field": 101, "string$field": random_string_generator()})
             object_id = client["simple_db"]["simple_coll_2"].find()[last_index]['_id']
             changed_ids.add(object_id)
 
@@ -240,7 +251,6 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         #  -------------------------------------------
 
         # Run sync
-
         sync_job_name = runner.run_sync_mode(self, conn_id)
 
         exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
@@ -251,8 +261,8 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
         messages_by_stream = runner.get_records_from_target_output()
         records_by_stream = {}
         for stream_name in self.expected_sync_streams():
-            records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages'] if x.get('action') == 'upsert']
-
+            records_by_stream[stream_name] = [x for x in messages_by_stream[stream_name]['messages']
+                                              if x.get('action') == 'upsert']
 
         # assert that each of the streams that we synced are the ones that we expect to see
         record_count_by_stream = runner.examine_target_output_file(self,
@@ -266,9 +276,11 @@ class MongoDBFieldNameRestrictions(unittest.TestCase):
             self.assertGreaterEqual(v, 6)
 
         # Verify that we got 2 records with _SDC_DELETED_AT
-        self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_1'] if x['data'].get('_sdc_deleted_at')]))
-        self.assertEqual(2, len([x['data'] for x in records_by_stream['simple_coll_2'] if x['data'].get('_sdc_deleted_at')]))
-        # Verify that the _id of the records sent are the same set as the
-        # _ids of the documents changed
-        actual = set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_1']]).union(set([ObjectId(x['data']['_id']) for x in records_by_stream['simple_coll_2']]))
-        self.assertEqual(changed_ids, actual)
+        for stream in self.expected_sync_streams():
+            self.assertEqual(2, len([x['data'] for x in records_by_stream[stream]
+                                     if x['data'].get('_sdc_deleted_at')]))
+
+        # Verify the _id of the records sent are the same set as the _ids of the documents changed
+        actual_ids = {ObjectId(x['data']['_id']) for stream in self.expected_sync_streams()
+                      for x in records_by_stream[stream]}
+        self.assertEqual(changed_ids, actual_ids)
