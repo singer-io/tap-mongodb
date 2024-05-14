@@ -1,6 +1,6 @@
 # Changelog
 
-## 3.2.0
+## 3.1.2
   * Allows to specify string values as projection [#94](https://github.com/singer-io/tap-mongodb/pull/94)
 
 ## 3.1.1
