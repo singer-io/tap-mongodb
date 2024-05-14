@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.2
+  * Allows to specify string values as projection [#94](https://github.com/singer-io/tap-mongodb/pull/94)
+
 ## 3.1.1
   * Gracefully fallback to not using a session if sessions are not supported by the mongo server [#112](https://github.com/singer-io/tap-mongodb/pull/112)
 
