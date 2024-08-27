@@ -88,7 +88,7 @@ def sync_collection(client, stream, state, projection):
                          projection,
                          sort=[(replication_key_name, pymongo.ASCENDING)]) as cursor:
         rows_saved = 0
-        time_extracted = utils.now()
+        
         start_time = time.time()
 
         for row in cursor:
@@ -105,7 +105,7 @@ def sync_collection(client, stream, state, projection):
             record_message = common.row_to_singer_record(stream,
                                                          row,
                                                          stream_version,
-                                                         time_extracted)
+                                                          utils.now())
 
             # gen_schema = common.row_to_schema_message(schema, record_message.record, row)
             # if DeepDiff(schema, gen_schema, ignore_order=True) != {}:

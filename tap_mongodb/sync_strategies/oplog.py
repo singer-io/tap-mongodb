@@ -123,7 +123,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
     )
     singer.write_message(activate_version_message)
 
-    time_extracted = utils.now()
+    
     rows_saved = 0
     start_time = time.time()
 
@@ -170,7 +170,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                 record_message = common.row_to_singer_record(stream,
                                                              row['o'],
                                                              version,
-                                                             time_extracted)
+                                                              utils.now())
                 singer.write_message(record_message)
 
                 rows_saved += 1
@@ -191,7 +191,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                 record_message = common.row_to_singer_record(stream,
                                                              row['o'],
                                                              version,
-                                                             time_extracted)
+                                                              utils.now())
                 singer.write_message(record_message)
 
                 rows_saved += 1
@@ -202,16 +202,19 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
 
             # flush buffer if it has filled up
             if len(update_buffer) >= MAX_UPDATE_BUFFER_LENGTH:
+                buffer_flush_time = None
                 for buffered_row in flush_buffer(client,
                                                  update_buffer,
                                                  stream_projection,
                                                  database_name,
                                                  collection_name):
+                    if not buffer_flush_time:
+                        buffer_flush_time = utils.now()
                     write_schema(schema, buffered_row, stream)
                     record_message = common.row_to_singer_record(stream,
                                                                  buffered_row,
                                                                  version,
-                                                                 time_extracted)
+                                                                 buffer_flush_time)
                     singer.write_message(record_message)
 
                     rows_saved += 1
@@ -229,7 +232,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                     record_message = common.row_to_singer_record(stream,
                                                                  buffered_row,
                                                                  version,
-                                                                 time_extracted)
+                                                                  utils.now())
                     singer.write_message(record_message)
 
                     rows_saved += 1
@@ -248,7 +251,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
             record_message = common.row_to_singer_record(stream,
                                                          buffered_row,
                                                          version,
-                                                         time_extracted)
+                                                         utils.now())
 
             singer.write_message(record_message)
             rows_saved += 1

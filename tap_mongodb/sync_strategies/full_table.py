@@ -102,7 +102,7 @@ def sync_collection(client, stream, state, projection):
                          projection,
                          sort=[("_id", pymongo.ASCENDING)]) as cursor:
         rows_saved = 0
-        time_extracted = utils.now()
+        
         start_time = time.time()
 
         schema = {"type": "object", "properties": {}}
@@ -121,7 +121,7 @@ def sync_collection(client, stream, state, projection):
             record_message = common.row_to_singer_record(stream,
                                                          row,
                                                          stream_version,
-                                                         time_extracted)
+                                                         utils.now())
 
             singer.write_message(record_message)
 
