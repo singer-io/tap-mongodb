@@ -392,6 +392,7 @@ def main_impl():
         state = args.state or {}
         do_sync(client, args.catalog.to_dict(), state)
 
+
 def main():
     try:
         main_impl()
