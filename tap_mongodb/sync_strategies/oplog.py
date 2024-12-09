@@ -123,6 +123,7 @@ def maybe_get_session(client):
         # return an object that works with a 'with' block
         return SessionNotAvailable()
 
+# pylint: disable=too-many-arguments, too-many-positional-arguments
 def process_row(schema, row, stream, update_buffer, rows_saved, version, time_extracted):
     row_op = row['op']
 
@@ -156,7 +157,7 @@ def process_row(schema, row, stream, update_buffer, rows_saved, version, time_ex
         singer.write_message(record_message)
 
         rows_saved += 1
-    
+
     return (rows_saved, update_buffer)
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
@@ -238,17 +239,17 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                                                                         stream_state['oplog_ts_inc']):
                     raise common.MongoAssertionException(
                         "Mongo is not honoring the sort ascending param")
-                
+
                 row_namespace = row['ns']
                 if row_namespace == 'admin.$cmd':
-                    # If the namespace is 'admin.$cmd', then the operation on the record was performed as part 
+                    # If the namespace is 'admin.$cmd', then the operation on the record was performed as part
                     # of a transaction and is recorded as a transactional applyOps entry.
                     for transaction_row in row['o']['applyOps']:
                         transaction_row['ts'] = row['ts']
-                        rows_saved, update_buffer = process_row(schema, transaction_row, stream, update_buffer, 
+                        rows_saved, update_buffer = process_row(schema, transaction_row, stream, update_buffer,
                                                                    rows_saved, version, time_extracted)
                 else:
-                    rows_saved, update_buffer = process_row(schema, row, stream, update_buffer, 
+                    rows_saved, update_buffer = process_row(schema, row, stream, update_buffer,
                                                                rows_saved, version, time_extracted)
 
 
