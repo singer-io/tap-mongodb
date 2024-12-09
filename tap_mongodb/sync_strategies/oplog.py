@@ -8,6 +8,9 @@ from pymongo.errors import ConfigurationError
 from bson import timestamp
 import tap_mongodb.sync_strategies.common as common
 
+from debugpy import listen, wait_for_client
+listen(8000)
+wait_for_client()
 
 LOGGER = singer.get_logger()
 
@@ -124,6 +127,41 @@ def maybe_get_session(client):
         # return an object that works with a 'with' block
         return SessionNotAvailable()
 
+def process_row(schema, row, stream, update_buffer, rows_saved, version, time_extracted):
+    row_op = row['op']
+
+    if row_op == 'i':
+        write_schema(schema, row['o'], stream)
+        record_message = common.row_to_singer_record(stream,
+                                                    row['o'],
+                                                    version,
+                                                    time_extracted)
+        singer.write_message(record_message)
+
+        rows_saved += 1
+
+    elif row_op == 'u':
+        update_buffer.add(row['o2']['_id'])
+
+    elif row_op == 'd':
+
+        # remove update from buffer if that document has been deleted
+        if row['o']['_id'] in update_buffer:
+            update_buffer.remove(row['o']['_id'])
+
+        # Delete ops only contain the _id of the row deleted
+        row['o'][SDC_DELETED_AT] = row['ts']
+
+        write_schema(schema, row['o'], stream)
+        record_message = common.row_to_singer_record(stream,
+                                                    row['o'],
+                                                    version,
+                                                    time_extracted)
+        singer.write_message(record_message)
+
+        rows_saved += 1
+    
+    return (rows_saved, update_buffer)
 
 # pylint: disable=too-many-locals, too-many-branches, too-many-statements
 def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None):
@@ -151,8 +189,15 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
     start_time = time.time()
 
     oplog_query = {
-        'ts': {'$gte': oplog_ts},
-        'ns': {'$eq' : '{}.{}'.format(database_name, collection_name)}
+        '$and': [
+            {'ts': {'$gte': oplog_ts}},
+            {
+                '$or': [
+                    {'ns': '{}.{}'.format(database_name, collection_name)},
+                    {'op': 'c', 'o.applyOps.ns': '{}.{}'.format(database_name, collection_name)}
+                ]
+            }
+        ]
     }
 
     projection = transform_projection(stream_projection)
@@ -197,39 +242,19 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                                                                         stream_state['oplog_ts_inc']):
                     raise common.MongoAssertionException(
                         "Mongo is not honoring the sort ascending param")
+                
+                row_namespace = row['ns']
+                if row_namespace == 'admin.$cmd':
+                    # If the namespace is 'admin.$cmd', then the operation on the record was performed as part 
+                    # of a transaction and is recorded as a transactional applyOps entry.
+                    for transaction_row in row['o']['applyOps']:
+                        transaction_row['ts'] = row['ts']
+                        rows_saved, update_buffer = process_row(schema, transaction_row, stream, update_buffer, 
+                                                                   rows_saved, version, time_extracted)
+                else:
+                    rows_saved, update_buffer = process_row(schema, row, stream, update_buffer, 
+                                                               rows_saved, version, time_extracted)
 
-                row_op = row['op']
-
-                if row_op == 'i':
-                    write_schema(schema, row['o'], stream)
-                    record_message = common.row_to_singer_record(stream,
-                                                                row['o'],
-                                                                version,
-                                                                time_extracted)
-                    singer.write_message(record_message)
-
-                    rows_saved += 1
-
-                elif row_op == 'u':
-                    update_buffer.add(row['o2']['_id'])
-
-                elif row_op == 'd':
-
-                    # remove update from buffer if that document has been deleted
-                    if row['o']['_id'] in update_buffer:
-                        update_buffer.remove(row['o']['_id'])
-
-                    # Delete ops only contain the _id of the row deleted
-                    row['o'][SDC_DELETED_AT] = row['ts']
-
-                    write_schema(schema, row['o'], stream)
-                    record_message = common.row_to_singer_record(stream,
-                                                                row['o'],
-                                                                version,
-                                                                time_extracted)
-                    singer.write_message(record_message)
-
-                    rows_saved += 1
 
                 state = update_bookmarks(state,
                                         tap_stream_id,
