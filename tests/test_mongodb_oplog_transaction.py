@@ -2,36 +2,13 @@ import tap_tester.connections as connections
 import tap_tester.menagerie   as menagerie
 import tap_tester.runner      as runner
 import os
-import datetime
 import unittest
-import datetime
-import pymongo
 import string
 import random
-import time
-import re
-import pprint
-import pdb
-import bson
-from bson import ObjectId
-import singer
-from functools import reduce
-from singer import utils, metadata
 from mongodb_common import drop_all_collections, get_test_connection
-import decimal
 
 
 RECORD_COUNT = {}
-
-# def get_test_connection():
-#     username = os.getenv('TAP_MONGODB_USER')
-#     password = os.getenv('TAP_MONGODB_PASSWORD')
-#     host= os.getenv('TAP_MONGODB_HOST')
-#     auth_source = os.getenv('TAP_MONGODB_DBNAME')
-#     port = os.getenv('TAP_MONGODB_PORT')
-#     ssl = False
-#     conn = pymongo.MongoClient(host=host, username=username, password=password, port=port, authSource=auth_source, ssl=ssl)
-#     return conn
 
 def random_string_generator(size=6, chars=string.ascii_uppercase + string.digits):
     return ''.join(random.choice(chars) for x in range(size))
