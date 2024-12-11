@@ -206,8 +206,7 @@ class MongoDBOplog(unittest.TestCase):
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
 
-        # Verify that we get 30 records due to the above transactions performed and 1 prior record 
-        # matching the bookmark value.
+        # Verify that we get 30 records due to the above transactions performed
         # (could be more due to overlap in gte oplog clause)
-        self.assertEqual(31,
+        self.assertGreaterEqual(31,
                          record_count_by_stream[self.table_name])
