@@ -3,7 +3,7 @@
 from setuptools import setup
 
 setup(name='tap-mongodb',
-      version='3.1.2',
+      version='3.1.3',
       description='Singer.io tap for extracting data from MongoDB',
       author='Stitch',
       url='https://singer.io',
@@ -13,7 +13,6 @@ setup(name='tap-mongodb',
           'singer-python==6.0.0',
           'pymongo==4.4.0',
           'tzlocal==2.0.0',
-          'terminaltables==3.1.0',
       ],
       extras_require={
           'dev': [

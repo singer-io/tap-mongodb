@@ -7,7 +7,6 @@ import decimal
 import bson
 import singer
 from singer import utils, metadata
-from terminaltables import AsciiTable
 from bson import objectid, timestamp, encode, decode, datetime as bson_datetime
 from bson.binary import Binary, UuidRepresentation
 from bson.codec_options import CodecOptions, DatetimeConversion
@@ -22,6 +21,8 @@ COUNTS = {}
 TIMES = {}
 SCHEMA_COUNT = {}
 SCHEMA_TIMES = {}
+
+LOGGER = singer.get_logger()
 
 class InvalidProjectionException(Exception):
     """Raised if projection blacklists _id"""
@@ -348,8 +349,7 @@ def get_sync_summary(catalog):
             '{:.2f}%'.format(100*schema_duration/stream_time)
         ]
         rows.append(row)
-
-    data = headers + rows
-    table = AsciiTable(data, title='Sync Summary')
-
-    return '\n\n' + table.table
+    LOGGER.info("\n**** Sync Summary:")
+    LOGGER.info(next(iter(headers), None))
+    for row in rows:
+        LOGGER.info(row)

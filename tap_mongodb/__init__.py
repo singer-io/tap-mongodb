@@ -351,7 +351,7 @@ def do_sync(client, catalog, state):
     for stream in streams_to_sync:
         sync_stream(client, stream, state)
 
-    LOGGER.info(common.get_sync_summary(catalog))
+    common.get_sync_summary(catalog)
 
 
 def main_impl():
