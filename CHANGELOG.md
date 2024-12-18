@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.3
+  * Remove deprecated terminaltables dependency [#120](https://github.com/singer-io/tap-mongodb/pull/120)
+
 ## 3.1.2
   * Allows to specify string values as projection [#94](https://github.com/singer-io/tap-mongodb/pull/94)
 

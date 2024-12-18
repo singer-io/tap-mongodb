@@ -23,6 +23,8 @@ TIMES = {}
 SCHEMA_COUNT = {}
 SCHEMA_TIMES = {}
 
+LOGGER = singer.get_logger()
+
 class InvalidProjectionException(Exception):
     """Raised if projection blacklists _id"""
 
@@ -348,8 +350,7 @@ def get_sync_summary(catalog):
             '{:.2f}%'.format(100*schema_duration/stream_time)
         ]
         rows.append(row)
-
-    data = headers + rows
-    table = AsciiTable(data, title='Sync Summary')
-
-    return '\n\n' + table.table
+    LOGGER.info("\n**** Sync Summary:")
+    LOGGER.info(next(iter(headers), None))
+    for row in rows:
+        LOGGER.info(row)
