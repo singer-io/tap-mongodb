@@ -81,6 +81,7 @@ def transform_projection(projection):
         # If only '_id' is whitelisted, return base projection with 'o._id' whitelisted
         new_projection = base_projection
         new_projection['o._id'] = 1
+        new_projection['o.applyOps'] = 1
         return new_projection
 
     # If whitelist is provided, return base projection along
@@ -90,6 +91,7 @@ def transform_projection(projection):
         for field, value in temp_projection.items():
             new_projection['o.' + field] = value
         new_projection['o._id'] = 1
+        new_projection['o.applyOps'] = 1
         return new_projection
 
     # If blacklist is provided, return blacklisted fields with _id whitelisted
