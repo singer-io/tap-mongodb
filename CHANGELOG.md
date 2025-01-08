@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.4
+  * Update pymongo to 4.10.1 [#121](https://github.com/singer-io/tap-mongodb/pull/121)
+
 ## 3.1.3
   * Remove deprecated terminaltables dependency [#120](https://github.com/singer-io/tap-mongodb/pull/120)
 
