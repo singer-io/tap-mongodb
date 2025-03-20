@@ -104,7 +104,8 @@ def sync_collection(client, stream, state, projection):
 
     with collection.find({'_id': find_filter},
                          projection,
-                         sort=[("_id", pymongo.ASCENDING)]) as cursor:
+                         sort=[("_id", pymongo.ASCENDING)],
+                         no_cursor_timeout=True) as cursor:
         rows_saved = 0
         time_extracted = utils.now()
         start_time = time.time()
