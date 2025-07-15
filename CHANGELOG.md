@@ -1,5 +1,8 @@
 # Changelog
 
+## 3.1.5
+  * Bump dependency versions for twistlock compliance [#124](https://github.com/singer-io/tap-mongodb/pull/124)
+
 ## 3.1.4
   * Update pymongo to 4.10.1 [#121](https://github.com/singer-io/tap-mongodb/pull/121)
 
