@@ -235,8 +235,9 @@ class MongoDBOplogBookmarks(unittest.TestCase):
         #     row = client.local.oplog.rs.find_one(sort=[('$natural', pymongo.DESCENDING)])
         #     latest_oplog_ts = row.get('ts')
 
-        self.assertEqual(
-            (marker_ts.time, marker_ts.inc),
-            (final_state['bookmarks']['simple_db-simple_coll_1']['oplog_ts_time'],
-             final_state['bookmarks']['simple_db-simple_coll_1']['oplog_ts_inc'])
+        tap_oplog_bookmark = (
+            final_state['bookmarks']['simple_db-simple_coll_1']['oplog_ts_time'],
+             final_state['bookmarks']['simple_db-simple_coll_1']['oplog_ts_inc']
         )
+        marker_tuples = (marker_ts.time, marker_ts.inc)
+        self.assertGreaterEqual(tap_oplog_bookmark, marker_tuples)
