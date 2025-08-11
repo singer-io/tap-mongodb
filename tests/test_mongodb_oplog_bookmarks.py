@@ -193,13 +193,22 @@ class MongoDBOplogBookmarks(unittest.TestCase):
             client["simple_db"]["simple_coll_2"].insert_one({"int_field": 101, "string_field": random_string_generator()})
             changed_ids.add(client['simple_db']['simple_coll_2'].find({'int_field': 101})[0]['_id'])
 
+        #Running a Sync before the marker 102
+        sync_job_name = runner.run_sync_mode(self, conn_id)
+        exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
+        menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
         #  -----------------------------------
         # ----------- Subsequent Oplog Sync ---------
         #  -----------------------------------
 
+        # Inserting Marker 102
+        with get_test_connection() as client:
+            marker_point = {"int_field": 102, "string_field": "marker_" + random_string_generator()}
+            result = client["simple_db"]["simple_coll_1"].insert_one(marker_point)
+            oplog_entry_point = client.local.oplog.rs.find_one({"o._id": result.inserted_id})
+            marker_ts = oplog_entry_point["ts"]
         # Run sync
         sync_job_name = runner.run_sync_mode(self, conn_id)
-
         exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
         menagerie.verify_sync_exit_status(self, exit_status, sync_job_name)
 
@@ -222,12 +231,12 @@ class MongoDBOplogBookmarks(unittest.TestCase):
 
         final_state = menagerie.get_state(conn_id)
 
-        with get_test_connection() as client:
-            row = client.local.oplog.rs.find_one(sort=[('$natural', pymongo.DESCENDING)])
-            latest_oplog_ts = row.get('ts')
+        # with get_test_connection() as client:
+        #     row = client.local.oplog.rs.find_one(sort=[('$natural', pymongo.DESCENDING)])
+        #     latest_oplog_ts = row.get('ts')
 
         self.assertEqual(
-            (latest_oplog_ts.time, latest_oplog_ts.inc),
+            (marker_ts.time, marker_ts.inc),
             (final_state['bookmarks']['simple_db-simple_coll_1']['oplog_ts_time'],
              final_state['bookmarks']['simple_db-simple_coll_1']['oplog_ts_inc'])
         )
