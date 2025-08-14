@@ -61,11 +61,10 @@ jobs:
             export DEBIAN_FRONTEND=noninteractive
             apt-get update && apt-get install -y tzdata mongodb-org-shell mongodb-mongosh mongodb-org make
             dpkg-reconfigure --frontend noninteractive tzdata
-            #export TZ=Etc/UTC
-            #mongosh -u $TAP_MONGODB_USER \
-            #        -p $TAP_MONGODB_PASSWORD \
-            #        --authenticationDatabase admin \
-            #        --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
+            mongosh -u $TAP_MONGODB_USER \
+                    -p $TAP_MONGODB_PASSWORD \
+                    --authenticationDatabase admin \
+                    --eval "rs.initiate({_id: \"rs0\", members: [{_id: 0, host: \"$TAP_MONGODB_HOST:$TAP_MONGODB_PORT\"}]})"
       - run:
           name: 'Setup virtual env'
           command: |
@@ -129,8 +128,11 @@ jobs:
             wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
             echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" \
                  | tee /etc/apt/sources.list.d/mongodb-org-5.0.list
-            apt-get update
-            apt-get install -y mongodb-org-shell mongodb-mongosh mongodb-org
+            wget https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
+            dpkg -i libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update && apt-get install -y tzdata mongodb-org-shell mongodb-mongosh mongodb-org make
+            dpkg-reconfigure --frontend noninteractive tzdata
             mongosh -u $TAP_MONGODB_USER \
                     -p $TAP_MONGODB_PASSWORD \
                     --authenticationDatabase admin \
@@ -198,8 +200,11 @@ jobs:
             wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add -
             echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/6.0 multiverse" \
                  | tee /etc/apt/sources.list.d/mongodb-org-6.0.list
-            apt-get update
-            apt-get install -y mongodb-org-shell mongodb-mongosh mongodb-org
+            wget https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
+            dpkg -i libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
+            export DEBIAN_FRONTEND=noninteractive
+            apt-get update && apt-get install -y tzdata mongodb-org-shell mongodb-mongosh mongodb-org make
+            dpkg-reconfigure --frontend noninteractive tzdata
             mongosh -u $TAP_MONGODB_USER \
                     -p $TAP_MONGODB_PASSWORD \
                     --authenticationDatabase admin \
