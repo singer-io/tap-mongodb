@@ -60,6 +60,7 @@ jobs:
             dpkg -i libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
             apt-get update
             apt-get install -y mongodb-org-shell mongodb-mongosh mongodb-org
+            export TZ=Etc/UTC
             mongosh -u $TAP_MONGODB_USER \
                     -p $TAP_MONGODB_PASSWORD \
                     --authenticationDatabase admin \
