@@ -250,18 +250,22 @@ workflows:
   version: 2
   commit: &commit_jobs
     jobs:
-      - build_mongo_5_0:
-          context:
-            - circleci-user
-            - tier-1-tap-user
-      - build_mongo_6_0:
-          context:
-            - circleci-user
-            - tier-1-tap-user
       - build_mongo_4_4:
           context:
             - circleci-user
             - tier-1-tap-user
+      - build_mongo_5_0:
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          requires:
+            - build_mongo_4_4
+      - build_mongo_6_0:
+          context:
+            - circleci-user
+            - tier-1-tap-user
+          requires:
+            - build_mongo_5_0
 
   build_daily:
     <<: *commit_jobs
