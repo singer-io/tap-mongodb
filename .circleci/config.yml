@@ -5,7 +5,7 @@ orbs:
 executors:
   tap_tester_mongo_4_4:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-uv
       - image: singerio/mongo:4.4-bionic
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -13,7 +13,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
   tap_tester_mongo_5_0:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-uv
       - image: singerio/mongo:5.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -21,7 +21,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
   tap_tester_mongo_6_0:
     docker:
-      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-18.04
+      - image: 218546966473.dkr.ecr.us-east-1.amazonaws.com/circle-ci:stitch-tap-tester-uv
       - image: singerio/mongo:6.0
         environment:
           MONGO_INITDB_ROOT_USERNAME: dev
@@ -49,6 +49,8 @@ jobs:
       - run:
           name: 'Setup Mongo'
           command: |
+            source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            uv pip install --upgrade awscli
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
             source tap-tester.env
             wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
@@ -63,11 +65,10 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            pyenv local 3.9.6
-            python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
+            uv venv --python 3.11 /usr/local/share/virtualenvs/tap-mongodb
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install -U 'pip==23.2' 'setuptools==68.0.0'
-            pip install .[dev]
+            uv pip install -U 'pip==23.2' 'setuptools==68.0.0'
+            uv pip install .[dev]
       - run:
           name: 'pylint'
           command: |
@@ -77,7 +78,7 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==4.4.0 nose2
+            uv pip install pymongo==4.4.0 nose2
             nose2 -v -s tests/unittests/
       - run:
           name: 'Integration Tests'
@@ -86,7 +87,7 @@ jobs:
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==4.4.0
+            uv pip install pymongo==4.4.0
             run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
@@ -117,6 +118,8 @@ jobs:
       - run:
           name: 'Setup Mongo'
           command: |
+            source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            uv pip install --upgrade awscli
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
             source tap-tester.env
             wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
@@ -131,11 +134,10 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            pyenv local 3.9.6
-            python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
+            uv venv --python 3.11 /usr/local/share/virtualenvs/tap-mongodb
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install -U 'pip==23.2' 'setuptools==68.0.0'
-            pip install .[dev]
+            uv pip install -U 'pip==23.2' 'setuptools==68.0.0'
+            uv pip install .[dev]
       - run:
           name: 'pylint'
           command: |
@@ -145,7 +147,7 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==4.4.0 nose2
+            uv pip install pymongo==4.4.0 nose2
             nose2 -v -s tests/unittests/
       - run:
           name: 'Integration Tests'
@@ -154,7 +156,7 @@ jobs:
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==4.4.0
+            uv pip install pymongo==4.4.0
             run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
@@ -185,6 +187,8 @@ jobs:
       - run:
           name: 'Setup Mongo'
           command: |
+            source /usr/local/share/virtualenvs/tap-tester/bin/activate
+            uv pip install --upgrade awscli
             aws s3 cp s3://com-stitchdata-dev-deployment-assets/environments/tap-tester/tap_tester_sandbox tap-tester.env
             source tap-tester.env
             wget -qO - https://www.mongodb.org/static/pgp/server-6.0.asc | apt-key add -
@@ -199,11 +203,10 @@ jobs:
       - run:
           name: 'Setup virtual env'
           command: |
-            pyenv local 3.9.6
-            python3 -mvenv /usr/local/share/virtualenvs/tap-mongodb
+            uv venv --python 3.11 /usr/local/share/virtualenvs/tap-mongodb
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install -U 'pip==23.2' 'setuptools==68.0.0'
-            pip install .[dev]
+            uv pip install -U 'pip==23.2' 'setuptools==68.0.0'
+            uv pip install .[dev]
       - run:
           name: 'pylint'
           command: |
@@ -213,7 +216,7 @@ jobs:
           name: "Unit Tests"
           command: |
             source /usr/local/share/virtualenvs/tap-mongodb/bin/activate
-            pip install pymongo==4.4.0 nose2
+            uv pip install pymongo==4.4.0 nose2
             nose2 -v -s tests/unittests/
       - run:
           name: 'Integration Tests'
@@ -222,7 +225,7 @@ jobs:
             mkdir /tmp/${CIRCLE_PROJECT_REPONAME}
             export STITCH_CONFIG_DIR=/tmp/${CIRCLE_PROJECT_REPONAME}
             source /usr/local/share/virtualenvs/tap-tester/bin/activate
-            pip install pymongo==4.4.0
+            uv pip install pymongo==4.4.0
             run-test --tap=tap-mongodb tests
       - run:
           name: 'Get Curl'
@@ -254,7 +257,7 @@ workflows:
           context:
             - circleci-user
             - tier-1-tap-user
-         
+
   build_daily:
     <<: *commit_jobs
     triggers:
