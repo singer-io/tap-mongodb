@@ -259,7 +259,7 @@ workflows:
             - circleci-user
             - tier-1-tap-user
           requires:
-            - build_mongo
+            - build
       - build_mongo_6_0:
           context:
             - circleci-user
