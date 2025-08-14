@@ -244,5 +244,5 @@ class MongoDBDatatype(unittest.TestCase):
         dict_keys = list(expected_record.keys())
         dict_keys.sort()
 
-        self.assertEquals({i: expected_record[i] for i in dict_keys},
-                          {i: records_by_stream['datatype_coll_1']['messages'][1]['data'][i] for i in dict_keys})
+        self.assertEqual({i: expected_record[i] for i in dict_keys},
+                         {i: records_by_stream['datatype_coll_1']['messages'][1]['data'][i] for i in dict_keys})
