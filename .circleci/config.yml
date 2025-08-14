@@ -29,7 +29,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
 
 jobs:
-  build_mongo_4_4:
+  build:
     executor: tap_tester_mongo_4_4
     steps:
       - checkout
@@ -250,7 +250,7 @@ workflows:
   version: 2
   commit: &commit_jobs
     jobs:
-      - build_mongo_4_4:
+      - build:
           context:
             - circleci-user
             - tier-1-tap-user
@@ -259,7 +259,7 @@ workflows:
             - circleci-user
             - tier-1-tap-user
           requires:
-            - build_mongo_4_4
+            - build_mongo
       - build_mongo_6_0:
           context:
             - circleci-user
