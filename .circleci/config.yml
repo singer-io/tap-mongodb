@@ -29,7 +29,7 @@ executors:
         command: [mongod, --replSet, rs0, --keyFile, /opt/mongo/keyfile]
 
 jobs:
-  build:
+  build_mongo_4_4:
     executor: tap_tester_mongo_4_4
     steps:
       - checkout
@@ -56,6 +56,8 @@ jobs:
             wget -qO - https://www.mongodb.org/static/pgp/server-5.0.asc | apt-key add -
             echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/5.0 multiverse" \
                  | tee /etc/apt/sources.list.d/mongodb-org-5.0.list
+            wget https://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
+            dpkg -i libssl1.1_1.1.1-1ubuntu2.1~18.04.23_amd64.deb
             apt-get update
             apt-get install -y mongodb-org-shell mongodb-mongosh mongodb-org
             mongosh -u $TAP_MONGODB_USER \
@@ -245,15 +247,11 @@ workflows:
           context:
             - circleci-user
             - tier-1-tap-user
-          requires:
-            - build
       - build_mongo_6_0:
           context:
             - circleci-user
             - tier-1-tap-user
-          requires:
-            - build_mongo_5_0
-      - build:
+      - build_mongo_4_4:
           context:
             - circleci-user
             - tier-1-tap-user
