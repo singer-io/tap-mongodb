@@ -475,5 +475,4 @@ class MongoDBIncremental(TestCase):
                                                                    conn_id,
                                                                    self.expected_sync_streams(),
                                                                    self.expected_pks())
-
         self.assertDictEqual(record_count_by_stream, self.expected_last_sync_row_counts())
