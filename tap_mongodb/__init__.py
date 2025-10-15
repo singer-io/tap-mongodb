@@ -144,8 +144,10 @@ def produce_collection_schema(collection):
                 if index_field_info:
                     valid_replication_keys.append(index_field_info[0])
 
+        mdata = metadata.write(mdata, (), 'forced-replication-method', 'FULL_TABLE')
         if valid_replication_keys:
             mdata = metadata.write(mdata, (), 'valid-replication-keys', valid_replication_keys)
+            mdata = metadata.write(mdata, (), 'forced-replication-method', 'INCREMENTAL')
 
     return {
         'table_name': collection_name,
