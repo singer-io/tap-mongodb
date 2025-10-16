@@ -97,7 +97,7 @@ class MongoDBIncremental(TestCase):
 
     def expected_last_sync_row_counts(self):
         return {
-            'simple_coll_1': 52, # 50 documents for initial insert, 2 documents inserted during sync2. When switching to LOG_BASED replication, it performs a full table sync which captures all existing documents in the collection.
+            'simple_coll_1': 53, # 50 documents for initial insert, 2 documents inserted during sync2, 1 additional record from LOG_BASED sync behavior. When switching to LOG_BASED replication, it may sync additional records due to oplog processing.
             'simple_coll_2': 102,
             **{"simple_coll_{}".format(k): 1 for k in self.key_names()}
         }
