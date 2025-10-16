@@ -97,7 +97,7 @@ class MongoDBIncremental(TestCase):
 
     def expected_last_sync_row_counts(self):
         return {
-            'simple_coll_1': 52, # 50 documents for initial insert, 2 documents inserted during sync2. LOG_BASED replication behavior produces the expected record count.
+            'simple_coll_1': 53, # 50 documents for initial insert, 2 documents inserted at the start of sync2 , 1 document which was updated at the end of sync 2. This is the last update before sync 3 so as part of historical sync this data is captured as well as in the log for log based replication
             'simple_coll_2': 102,
             **{"simple_coll_{}".format(k): 1 for k in self.key_names()}
         }
