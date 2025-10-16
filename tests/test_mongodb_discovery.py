@@ -156,15 +156,14 @@ class MongoDBDiscovery(unittest.TestCase):
 
     def expected_forced_replication_methods(self):
         return {
-            'simple_db-simple_coll_1': self.FULL_TABLE,
-            'simple_db-simple_coll_2': self.FULL_TABLE,
-            'simple_db_2-simple_coll_1': self.FULL_TABLE,
-            'simple_db_2-SIMPLE_COLL_1': self.FULL_TABLE,
-            'admin-admin_coll_1': self.FULL_TABLE,
-            'datatype_db-datatype_coll_1': self.FULL_TABLE,
-            'datatype_db-datatype_coll_2': self.INCREMENTAL,  # has additional indexes
-            'special_db-hebrew_ישראל': self.FULL_TABLE,
-            'special_db-hello!world?': self.FULL_TABLE,
+            'simple_db-simple_coll_1': self.INCREMENTAL,
+            'simple_db-simple_coll_2': self.INCREMENTAL,
+            'simple_db_2-simple_coll_1': self.INCREMENTAL,
+            'simple_db_2-SIMPLE_COLL_1': self.INCREMENTAL,
+            'admin-admin_coll_1': self.INCREMENTAL,
+            'datatype_db-datatype_coll_1': self.INCREMENTAL,
+            'datatype_db-datatype_coll_2': self.INCREMENTAL,
+            'special_db-hello!world?': self.INCREMENTAL,
         }
 
     def expected_table_names(self):
