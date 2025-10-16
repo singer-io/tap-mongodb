@@ -138,7 +138,7 @@ def process_row(schema, row, stream, update_buffer, rows_saved, version, time_ex
                                                     row['o'],
                                                     version,
                                                     time_extracted)
-        singer.write_message(record_message)
+        singer.write_message(record_message, allow_nan=True)
 
         rows_saved += 1
 
@@ -159,7 +159,7 @@ def process_row(schema, row, stream, update_buffer, rows_saved, version, time_ex
                                                     row['o'],
                                                     version,
                                                     time_extracted)
-        singer.write_message(record_message)
+        singer.write_message(record_message, allow_nan=True)
 
         rows_saved += 1
 
@@ -275,7 +275,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                                                                     buffered_row,
                                                                     version,
                                                                     time_extracted)
-                        singer.write_message(record_message)
+                        singer.write_message(record_message, allow_nan=True)
 
                         rows_saved += 1
                     update_buffer = set()
@@ -293,7 +293,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                                                                     buffered_row,
                                                                     version,
                                                                     time_extracted)
-                        singer.write_message(record_message)
+                        singer.write_message(record_message, allow_nan=True)
 
                         rows_saved += 1
                     update_buffer = set()
@@ -313,7 +313,7 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                                                             version,
                                                             time_extracted)
 
-                singer.write_message(record_message)
+                singer.write_message(record_message, allow_nan=True)
                 rows_saved += 1
 
 
