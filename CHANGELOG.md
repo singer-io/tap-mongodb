@@ -1,7 +1,7 @@
 # Changelog
 
 ## 3.2.1
-  * Add forced-replication-method to discovery catalog with automatic detection based on available indexes
+  * Add forced-replication-method to discovery catalog with automatic detection based on available indexes [#128](https://github.com/singer-io/tap-mongodb/pull/128)
 
 ## 3.2.0
   * Enhance Log-Based Replication to Support Transactional Records [#119](https://github.com/singer-io/tap-mongodb/pull/119)
