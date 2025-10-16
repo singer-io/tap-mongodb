@@ -163,6 +163,7 @@ class MongoDBDiscovery(unittest.TestCase):
             'admin-admin_coll_1': self.INCREMENTAL,
             'datatype_db-datatype_coll_1': self.INCREMENTAL,
             'datatype_db-datatype_coll_2': self.INCREMENTAL,
+            'special_db-hebrew_ישראל': self.INCREMENTAL,
             'special_db-hello!world?': self.INCREMENTAL,
         }
 
