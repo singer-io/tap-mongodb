@@ -154,19 +154,6 @@ class MongoDBDiscovery(unittest.TestCase):
             'special_db-hello!world?': 50
         }
 
-    def expected_forced_replication_methods(self):
-        return {
-            'simple_db-simple_coll_1': self.INCREMENTAL,
-            'simple_db-simple_coll_2': self.INCREMENTAL,
-            'simple_db_2-simple_coll_1': self.INCREMENTAL,
-            'simple_db_2-SIMPLE_COLL_1': self.INCREMENTAL,
-            'admin-admin_coll_1': self.INCREMENTAL,
-            'datatype_db-datatype_coll_1': self.INCREMENTAL,
-            'datatype_db-datatype_coll_2': self.INCREMENTAL,
-            'special_db-hebrew_ישראל': self.INCREMENTAL,
-            'special_db-hello!world?': self.INCREMENTAL,
-        }
-
     def expected_table_names(self):
         return {
             'simple_coll_1',
@@ -272,9 +259,8 @@ class MongoDBDiscovery(unittest.TestCase):
                 # Verify is-view metadata is False
                 self.assertFalse(stream_properties['is-view'])
 
-                # Verify forced-replication-method matches expectations
-                expected_forced_replication_method = self.expected_forced_replication_methods()[stream]
-                self.assertEqual(expected_forced_replication_method, stream_properties[self.FORCED_REPLICATION_METHOD])
+                # Verify no forced-replication-method is present in metadata
+                self.assertNotIn(self.FORCED_REPLICATION_METHOD, stream_properties.keys())
 
                 # Verify database-name is consistent with the tap_stream_id
                 tap_stream_id_db_prefix = stream_catalog['tap_stream_id'].split('-')[0]
