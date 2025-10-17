@@ -140,6 +140,23 @@ class MongoDBDiscovery(unittest.TestCase):
             'special_db-hello!world?': {'_id'},
         }
 
+    def expected_forced_replication_methods(self):
+        """
+        Collections with any valid replication keys (including default _id) should have INCREMENTAL.
+        Only collections without any valid indexes would have FULL_TABLE (very rare edge case).
+        """
+        return {
+            'simple_db-simple_coll_1': self.INCREMENTAL,  # has _id index
+            'simple_db-simple_coll_2': self.INCREMENTAL,  # has _id index  
+            'simple_db_2-simple_coll_1': self.INCREMENTAL,  # has _id index
+            'simple_db_2-SIMPLE_COLL_1': self.INCREMENTAL,  # has _id index
+            'admin-admin_coll_1': self.INCREMENTAL,  # has _id index
+            'datatype_db-datatype_coll_1': self.INCREMENTAL,  # has _id index
+            'datatype_db-datatype_coll_2': self.INCREMENTAL,  # has _id index + additional indexes
+            'special_db-hebrew_ישראל': self.INCREMENTAL,  # has _id index
+            'special_db-hello!world?': self.INCREMENTAL,  # has _id index
+        }
+
     def expected_row_counts(self):
         return {
             'simple_db-simple_coll_1': 50,
@@ -216,6 +233,7 @@ class MongoDBDiscovery(unittest.TestCase):
                 expected_primary_keys = self.expected_primary_keys()[stream]
                 expected_replication_keys = self.expected_replication_keys()[stream]
                 expected_row_count = self.expected_row_counts()[stream]
+                expected_forced_replication_method = self.expected_forced_replication_methods()[stream]
 
                 # collecting actual values...
                 stream_catalog = [catalog for catalog in stream_catalogs
@@ -259,8 +277,9 @@ class MongoDBDiscovery(unittest.TestCase):
                 # Verify is-view metadata is False
                 self.assertFalse(stream_properties['is-view'])
 
-                # Verify no forced-replication-method is present in metadata
-                self.assertNotIn(self.FORCED_REPLICATION_METHOD, stream_properties.keys())
+                # Verify forced-replication-method matches expectations
+                self.assertIn(self.FORCED_REPLICATION_METHOD, stream_properties.keys())
+                self.assertEqual(expected_forced_replication_method, actual_replication_method)
 
                 # Verify database-name is consistent with the tap_stream_id
                 tap_stream_id_db_prefix = stream_catalog['tap_stream_id'].split('-')[0]
