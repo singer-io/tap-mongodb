@@ -111,7 +111,7 @@ def sync_collection(client, stream, state, projection):
             # if DeepDiff(schema, gen_schema, ignore_order=True) != {}:
             #   emit gen_schema
             #   schema = gen_schema
-            singer.write_message(record_message)
+            singer.write_message(record_message, allow_nan=True)
             rows_saved += 1
 
             update_bookmark(row, state, tap_stream_id, replication_key_name)

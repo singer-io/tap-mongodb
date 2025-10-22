@@ -127,7 +127,7 @@ def sync_collection(client, stream, state, projection):
                                                          stream_version,
                                                          time_extracted)
 
-            singer.write_message(record_message)
+            singer.write_message(record_message, allow_nan=True)
 
             state = singer.write_bookmark(state,
                                           stream['tap_stream_id'],

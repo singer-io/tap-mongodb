@@ -1,8 +1,11 @@
 # Changelog
 
+## 3.3.0
+  * Handle Non-finite values (NaN, Infinity) [#129](https://github.com/singer-io/tap-mongodb/pull/129)
+
 ## 3.2.0
   * Enhance Log-Based Replication to Support Transactional Records [#119](https://github.com/singer-io/tap-mongodb/pull/119)
-  
+
 ## 3.1.4
   * Update pymongo to 4.10.1 [#121](https://github.com/singer-io/tap-mongodb/pull/121)
 
