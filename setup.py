@@ -10,7 +10,7 @@ setup(name='tap-mongodb',
       classifiers=['Programming Language :: Python :: 3 :: Only'],
       py_modules=['tap_mongodb'],
       install_requires=[
-          'singer-python @ git+https://github.com/singer-io/singer-python.git@SUP-6525-allow-nan',
+          'singer-python==6.3.0',
           'pymongo==4.10.1',
           'tzlocal==2.0.0',
       ],
