@@ -467,6 +467,15 @@ class MongoDBIncremental(TestCase):
                                                                                    stream_catalog,
                                                                                    annotated_schema,
                                                                                    additional_md)
+        # Do an intentional write unrelated record before third sync 
+        #to allow LOG_BASED replication method to have a deterministic starting point for replication
+        with get_test_connection() as client:
+            # Write an unrelated oplog entry so LOG_BASED starts from a deterministic boundary.
+            client["oplog_anchor_db"]["oplog_anchor_coll"].insert_one({
+                "anchor": "third_sync_boundary",
+                "created_at": datetime.utcnow()
+            })
+
         # Run sync
         sync_job_name = runner.run_sync_mode(self, conn_id)
         exit_status = menagerie.get_exit_status(conn_id, sync_job_name)
