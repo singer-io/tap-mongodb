@@ -231,12 +231,12 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                 session=session if have_session else None,
                 no_cursor_timeout=True
         ) as cursor:
-            # Refresh the session every 10 minutes to keep it alive
-            if have_session and time.time() - session_refresh_time > 600:
-                client.local.command('ping', session=session)
-                session_refresh_time = time.time()
-
             for row in cursor:
+                # Refresh the session every 10 minutes to keep it alive
+                if have_session and time.time() - session_refresh_time > 600:
+                    client.local.command('ping', session=session)
+                    session_refresh_time = time.time()
+
                 # assertions that mongo is respecing the ts query and sort order
                 if row.get('ts') and row.get('ts') < oplog_ts:
                     raise common.MongoAssertionException("Mongo is not honoring the query param")
