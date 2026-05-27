@@ -5,6 +5,7 @@ import pymongo
 import singer
 from singer import metadata, utils
 import tap_mongodb.sync_strategies.common as common
+from tap_mongodb.sync_strategies.oplog import maybe_get_session, SessionNotAvailable
 
 LOGGER = singer.get_logger()
 
@@ -101,51 +102,61 @@ def sync_collection(client, stream, state, projection):
     # pylint: disable=logging-format-interpolation
     LOGGER.info(query_message)
 
+    session_refresh_time = time.time()
 
-    with collection.find({'_id': find_filter},
-                         projection,
-                         sort=[("_id", pymongo.ASCENDING)],
-                         no_cursor_timeout=True) as cursor:
-        rows_saved = 0
-        time_extracted = utils.now()
-        start_time = time.time()
+    with maybe_get_session(client) as session:
+        have_session = not isinstance(session, SessionNotAvailable)
 
-        schema = {"type": "object", "properties": {}}
-        for row in cursor:
-            rows_saved += 1
+        with collection.find({'_id': find_filter},
+                             projection,
+                             sort=[("_id", pymongo.ASCENDING)],
+                             no_cursor_timeout=True,
+                             session=session if have_session else None) as cursor:
+            rows_saved = 0
+            time_extracted = utils.now()
+            start_time = time.time()
 
-            schema_build_start_time = time.time()
-            if common.row_to_schema(schema, row):
-                singer.write_message(singer.SchemaMessage(
-                    stream=common.calculate_destination_stream_name(stream),
-                    schema=schema,
-                    key_properties=['_id']))
-                common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
-            common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
+            schema = {"type": "object", "properties": {}}
+            for row in cursor:
+                rows_saved += 1
 
-            record_message = common.row_to_singer_record(stream,
-                                                         row,
-                                                         stream_version,
-                                                         time_extracted)
+                # Refresh the session every 10 minutes to keep it alive
+                if have_session and time.time() - session_refresh_time > 600:
+                    client.local.command('ping', session=session)
+                    session_refresh_time = time.time()
 
-            singer.write_message(record_message, allow_nan=True)
+                schema_build_start_time = time.time()
+                if common.row_to_schema(schema, row):
+                    singer.write_message(singer.SchemaMessage(
+                        stream=common.calculate_destination_stream_name(stream),
+                        schema=schema,
+                        key_properties=['_id']))
+                    common.SCHEMA_COUNT[stream['tap_stream_id']] += 1
+                common.SCHEMA_TIMES[stream['tap_stream_id']] += time.time() - schema_build_start_time
 
-            state = singer.write_bookmark(state,
-                                          stream['tap_stream_id'],
-                                          'last_id_fetched',
-                                          common.class_to_string(row['_id'],
-                                                                 row['_id'].__class__.__name__))
-            state = singer.write_bookmark(state,
-                                          stream['tap_stream_id'],
-                                          'last_id_fetched_type',
-                                          row['_id'].__class__.__name__)
+                record_message = common.row_to_singer_record(stream,
+                                                             row,
+                                                             stream_version,
+                                                             time_extracted)
+
+                singer.write_message(record_message, allow_nan=True)
+
+                state = singer.write_bookmark(state,
+                                              stream['tap_stream_id'],
+                                              'last_id_fetched',
+                                              common.class_to_string(row['_id'],
+                                                                     row['_id'].__class__.__name__))
+                state = singer.write_bookmark(state,
+                                              stream['tap_stream_id'],
+                                              'last_id_fetched_type',
+                                              row['_id'].__class__.__name__)
 
 
-            if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
-                singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
+                if rows_saved % common.UPDATE_BOOKMARK_PERIOD == 0:
+                    singer.write_message(singer.StateMessage(value=copy.deepcopy(state)))
 
-        common.COUNTS[tap_stream_id] += rows_saved
-        common.TIMES[tap_stream_id] += time.time()-start_time
+            common.COUNTS[tap_stream_id] += rows_saved
+            common.TIMES[tap_stream_id] += time.time()-start_time
 
     # clear max pk value and last pk fetched upon successful sync
     singer.clear_bookmark(state, stream['tap_stream_id'], 'max_id_value')
