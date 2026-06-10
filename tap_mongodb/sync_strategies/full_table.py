@@ -117,14 +117,14 @@ def sync_collection(client, stream, state, projection):
             start_time = time.time()
 
             schema = {"type": "object", "properties": {}}
-
-            # Refresh the session every 10 minutes to keep it alive
-            if have_session and time.time() - session_refresh_time > 600:
-                client.local.command('ping', session=session)
-                session_refresh_time = time.time()
-
             for row in cursor:
                 rows_saved += 1
+
+                # Refresh the session every 10 minutes to keep it alive
+                if have_session and rows_saved % 10000 == 0:
+                    if time.time() - session_refresh_time > 600:
+                        client[database_name].command('ping', session=session)
+                        session_refresh_time = time.time()
 
                 schema_build_start_time = time.time()
                 if common.row_to_schema(schema, row):
