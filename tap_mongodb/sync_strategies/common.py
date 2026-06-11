@@ -21,6 +21,7 @@ COUNTS = {}
 TIMES = {}
 SCHEMA_COUNT = {}
 SCHEMA_TIMES = {}
+MAX_CURSOR_RETRIES = 5
 
 LOGGER = singer.get_logger()
 
