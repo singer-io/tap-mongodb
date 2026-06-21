@@ -145,7 +145,11 @@ def transform_value(value, path):
     if isinstance(value, bson.int64.Int64):
         return int(value)
     if isinstance(value, Binary):
-        return str(value.as_uuid(value.subtype))
+        try:
+            return str(value.as_uuid(value.subtype))
+        except ValueError:
+            LOGGER.warning("Binary value is not a UUID, returning value itself")
+            return base64.b64encode(value).decode('utf-8')
     if isinstance(value, bytes):
         # Return the original base64 encoded string
         return base64.b64encode(value).decode('utf-8')
