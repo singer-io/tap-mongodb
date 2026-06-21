@@ -377,7 +377,7 @@ def main_impl():
     if not verify_mode and use_ssl:
         connection_params["tlsAllowInvalidCertificates"] = True
 
-    client = pymongo.MongoClient(**connection_params)
+    client = pymongo.MongoClient(uuidRepresentation="standard", **connection_params)
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
