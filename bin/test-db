@@ -63,6 +63,8 @@ def get_ip_addr(name):
     IP_ADDR_COMMAND = "docker inspect {} | jq -r .[].NetworkSettings.IPAddress"
     print("Retrieving IP addr of mongodb container")
     ip_addr = subprocess.check_output(IP_ADDR_COMMAND.format(name), shell=True).decode('utf-8').rstrip()
+    if not ip_addr or ip_addr == 'null':
+        sys.exit("Could not retrieve IP address for container '{}'. Is it running? Try: python3 bin/test-db start".format(name))
     print(ip_addr)
     return ip_addr
 
