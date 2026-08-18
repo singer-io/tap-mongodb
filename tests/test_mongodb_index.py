@@ -5,7 +5,7 @@ import string
 import unittest
 from pymongo import ASCENDING
 
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set, get_root_metadata
 from tap_tester import connections, menagerie, runner
 
 
@@ -137,14 +137,14 @@ class MongoDBOplog(unittest.TestCase):
 
             # assert that the pks are correct
             self.assertEqual(self.expected_pks()[found_stream['stream_name']],
-                             set(found_stream.get('metadata', {}).get('table-key-properties')))
+                             set(get_root_metadata(found_stream).get('table-key-properties')))
 
             # assert that the row counts are correct
             self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
-                             found_stream.get('metadata', {}).get('row-count'))
+                             get_root_metadata(found_stream).get('row-count'))
 
         # no plans for tap to support compound index, may not appear in valid-replication-keys list
-        discovered_replication_keys = found_catalogs[0]['metadata']['valid-replication-keys']
+        discovered_replication_keys = get_root_metadata(found_catalogs[0]).get('valid-replication-keys')
         for field in self.expected_string_fields():
             self.assertIn(field, discovered_replication_keys)
         self.assertIn('_id', discovered_replication_keys)

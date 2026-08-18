@@ -136,9 +136,8 @@ class MongoDBTableResetInc(TestCase):
         menagerie.verify_check_exit_status(self, exit_status, check_job_name)
 
         # verify the tap discovered the right streams
-        catalog = menagerie.get_catalog(conn_id)
         found_catalogs = menagerie.get_catalogs(conn_id)
-        found_streams = {entry['tap_stream_id'] for entry in catalog['streams']}
+        found_streams = {entry['tap_stream_id'] for entry in found_catalogs}
         self.assertSetEqual(self.expected_check_streams(), found_streams)
 
         # verify the tap discovered stream metadata is consistent with the source database
@@ -152,7 +151,7 @@ class MongoDBTableResetInc(TestCase):
                 expected_replication_keys = self.expected_valid_replication_keys()[stream]
 
                 # gather results
-                found_stream = [entry for entry in catalog['streams'] if entry['tap_stream_id'] == tap_stream_id][0]
+                found_stream = [entry for entry in found_catalogs if entry['tap_stream_id'] == tap_stream_id][0]
                 stream_metadata = [entry['metadata'] for entry in found_stream['metadata'] if entry['breadcrumb']==[]][0]
                 primary_key = set(stream_metadata.get('table-key-properties'))
                 row_count = stream_metadata.get('row-count')
@@ -203,8 +202,8 @@ class MongoDBTableResetInc(TestCase):
                 # gather results
                 persisted_schema = messages_by_stream[tap_stream_id]['schema']
 
-                # assert the schema is an object
-                self.assertDictEqual(expected_schema, persisted_schema)
+                # assert the schema is an object (ignore 'selected' added by in-memory backend)
+                self.assertDictEqual(expected_schema, {k: v for k, v in persisted_schema.items() if k != 'selected'})
 
         # verify that each of the streams that we synced are the ones that we expect to see
         record_count_by_stream = runner.examine_target_output_file(self,

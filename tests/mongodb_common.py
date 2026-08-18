@@ -37,3 +37,11 @@ def drop_all_collections(client):
                 continue
             LOGGER.info("Dropping database: " + db_name + ", collection: " + collection_name)
             client[db_name][collection_name].drop()
+
+def get_root_metadata(catalog_entry):
+    """Return root-level metadata dict from a catalog entry, handling both Singer list format
+    (in-memory backend) and flat dict format (Stitch backend)."""
+    metadata = catalog_entry.get('metadata', {})
+    if isinstance(metadata, list):
+        return next((e['metadata'] for e in metadata if e.get('breadcrumb') == []), {})
+    return metadata

@@ -7,7 +7,7 @@ import string
 import unittest
 from bson.decimal128 import Decimal128
 
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set, get_root_metadata
 from tap_tester import connections, menagerie, runner
 
 
@@ -247,7 +247,7 @@ class MongoDbPrimaryKeyIdVariation(unittest.TestCase):
                                                                                    annotated_schema,
                                                                                    additional_md)
             # verify _id is marked in metadata as table-key-property
-            self.assertEqual(stream_catalog['metadata']['table-key-properties'][0], '_id')
+            self.assertEqual(get_root_metadata(stream_catalog)['table-key-properties'][0], '_id')
 
         runner.run_sync_mode(self, conn_id)
 

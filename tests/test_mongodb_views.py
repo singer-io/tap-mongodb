@@ -4,7 +4,7 @@ import random
 import string
 import unittest
 
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set, get_root_metadata
 from tap_tester import connections, menagerie, runner
 
 
@@ -125,7 +125,7 @@ class MongoDBViewDiscovery(unittest.TestCase):
 
         # validate the discovered streams are not views
         for stream_catalog in found_catalogs:
-            self.assertEqual(stream_catalog['metadata']['is-view'], False)
+            self.assertEqual(get_root_metadata(stream_catalog)['is-view'], False)
 
         for stream_catalog in found_catalogs:
             annotated_schema = menagerie.get_annotated_schema(conn_id, stream_catalog['stream_id'])
