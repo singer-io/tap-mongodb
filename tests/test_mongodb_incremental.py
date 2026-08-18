@@ -152,9 +152,8 @@ class MongoDBIncremental(TestCase):
         menagerie.verify_check_exit_status(self, exit_status, check_job_name)
 
         # verify the tap discovered the right streams
-        catalog = menagerie.get_catalog(conn_id)
         found_catalogs = menagerie.get_catalogs(conn_id)
-        found_streams = {entry['tap_stream_id'] for entry in catalog['streams']}
+        found_streams = {entry['tap_stream_id'] for entry in found_catalogs}
         self.assertSetEqual(self.expected_check_streams(), found_streams)
 
         # verify the tap discovered stream metadata is consistent with the source database
@@ -168,7 +167,7 @@ class MongoDBIncremental(TestCase):
                 expected_replication_keys = self.expected_valid_replication_keys()[stream]
 
                 # gather results
-                found_stream = [entry for entry in catalog['streams'] if entry['tap_stream_id'] == tap_stream_id][0]
+                found_stream = [entry for entry in found_catalogs if entry['tap_stream_id'] == tap_stream_id][0]
                 stream_metadata = [entry['metadata'] for entry in found_stream['metadata'] if entry['breadcrumb']==[]][0]
                 primary_key = set(stream_metadata.get('table-key-properties'))
                 row_count = stream_metadata.get('row-count')

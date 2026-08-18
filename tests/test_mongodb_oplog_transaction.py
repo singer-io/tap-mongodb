@@ -5,7 +5,7 @@ import os
 import unittest
 import string
 import random
-from mongodb_common import drop_all_collections, get_test_connection
+from mongodb_common import drop_all_collections, get_test_connection, get_root_metadata
 
 RECORD_COUNT = {}
 
@@ -108,11 +108,11 @@ class MongoDBOplog(unittest.TestCase):
 
             # assert that the pks are correct
             self.assertEqual(self.expected_pks()[found_stream['stream_name']],
-                             set(found_stream.get('metadata', {}).get('table-key-properties')))
+set(get_root_metadata(found_stream).get('table-key-properties')))
 
-            # assert that the row counts are correct
-            self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
-                             found_stream.get('metadata', {}).get('row-count'))
+               # assert that the row counts are correct
+               self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
+                                get_root_metadata(found_stream).get('row-count'))
 
         #  -----------------------------------
         # ----------- Initial Full Table ---------

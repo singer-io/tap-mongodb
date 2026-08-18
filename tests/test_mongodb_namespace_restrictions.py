@@ -5,7 +5,7 @@ import unittest
 from bson import ObjectId
 from pymongo.errors import OperationFailure
 
-from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set
+from mongodb_common import drop_all_collections, get_test_connection, ensure_environment_variables_set, get_root_metadata
 from tap_tester import connections, menagerie, runner, LOGGER
 
 
@@ -155,11 +155,11 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
 
             # assert that the pks are correct
             self.assertEqual(self.expected_pks()[found_stream['stream_name']],
-                             set(found_stream.get('metadata', {}).get('table-key-properties')))
+set(get_root_metadata(found_stream).get('table-key-properties')))
 
-            # assert that the row counts are correct
-            self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
-                             found_stream.get('metadata', {}).get('row-count'))
+                    # assert that the row counts are correct
+                    self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
+                                     get_root_metadata(found_stream).get('row-count'))
 
         #  ----------------------------------------
         #  ----------- Initial Full Table ---------

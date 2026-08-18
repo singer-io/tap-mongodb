@@ -196,11 +196,11 @@ class MongoDBDiscovery(unittest.TestCase):
         menagerie.verify_check_exit_status(self, exit_status, check_job_name)
 
         # Verify a catalog was produced by discovery
-        catalog = menagerie.get_catalog(conn_id)
-        self.assertGreater(len(catalog), 0)
+        found_catalogs = menagerie.get_catalogs(conn_id)
+        self.assertGreater(len(found_catalogs), 0)
 
         # Verify stream_name entries match the expected table names
-        stream_catalogs = catalog['streams']
+        stream_catalogs = found_catalogs
         stream_names = {catalog['stream_name'] for catalog in stream_catalogs}
         self.assertSetEqual(self.expected_table_names(), stream_names)
 
