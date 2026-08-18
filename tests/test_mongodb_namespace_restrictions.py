@@ -155,11 +155,11 @@ class MongoDBNameSpaceRestrictions(unittest.TestCase):
 
             # assert that the pks are correct
             self.assertEqual(self.expected_pks()[found_stream['stream_name']],
-set(get_root_metadata(found_stream).get('table-key-properties')))
+                             set(get_root_metadata(found_stream).get('table-key-properties')))
 
-                    # assert that the row counts are correct
-                    self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
-                                     get_root_metadata(found_stream).get('row-count'))
+            # assert that the row counts are correct
+            self.assertEqual(self.expected_row_counts()[found_stream['stream_name']],
+                             get_root_metadata(found_stream).get('row-count'))
 
         #  ----------------------------------------
         #  ----------- Initial Full Table ---------

@@ -157,6 +157,24 @@ class TestTransactionalInsertProjection(unittest.TestCase):
             self.assertNotIn('int_field', record,
                              "int_field must be excluded by the projection")
 
+    def test_blacklist_projection_excludes_specified_field(self):
+        """Blacklist projection {'int_field': 0} must drop int_field and keep all others."""
+        ops = [
+            {
+                'op': 'i',
+                'ns': 'testdb.testcoll',
+                'o': {'_id': 'id1', 'string_field': 'hello', 'int_field': 999}
+            }
+        ]
+        messages = run_sync_collection({'int_field': 0}, [make_apply_ops_row(ops)])
+        records = get_records(messages)
+
+        self.assertEqual(len(records), 1)
+        self.assertNotIn('int_field', records[0],
+                         "int_field must be excluded by the blacklist projection")
+        self.assertIn('string_field', records[0])
+        self.assertIn('_id', records[0])
+
     def test_no_projection_passes_all_fields_through(self):
         """When stream_projection is None, all fields must be passed through unfiltered."""
         ops = [

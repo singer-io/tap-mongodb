@@ -202,8 +202,8 @@ class MongoDBTableResetInc(TestCase):
                 # gather results
                 persisted_schema = messages_by_stream[tap_stream_id]['schema']
 
-                # assert the schema is an object
-                self.assertDictEqual(expected_schema, persisted_schema)
+                # assert the schema is an object (ignore 'selected' added by in-memory backend)
+                self.assertDictEqual(expected_schema, {k: v for k, v in persisted_schema.items() if k != 'selected'})
 
         # verify that each of the streams that we synced are the ones that we expect to see
         record_count_by_stream = runner.examine_target_output_file(self,

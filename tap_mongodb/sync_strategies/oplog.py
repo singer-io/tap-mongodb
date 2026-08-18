@@ -256,8 +256,15 @@ def sync_collection(client, stream, state, stream_projection, max_oplog_ts=None)
                         # and cannot be sub-projected by MongoDB. Apply the projection manually
                         # so unprojected fields do not leak into the schema or records.
                         if stream_projection and transaction_row.get('op') == 'i':
-                            transaction_row['o'] = {k: v for k, v in transaction_row['o'].items()
-                                                    if k in stream_projection or k == '_id'}
+                            temp = {k: v for k, v in stream_projection.items() if k != '_id'}
+                            # mirror transform_projection: empty temp means _id-only (treat as whitelist)
+                            is_whitelist = not temp or any(bool(v) for v in temp.values())
+                            if is_whitelist:
+                                transaction_row['o'] = {k: v for k, v in transaction_row['o'].items()
+                                                        if k in stream_projection or k == '_id'}
+                            else:
+                                transaction_row['o'] = {k: v for k, v in transaction_row['o'].items()
+                                                        if bool(stream_projection.get(k, 1))}
                         rows_saved, update_buffer = process_row(schema, transaction_row, stream, update_buffer,
                                                                    rows_saved, version, time_extracted, current_namespace)
                 else:
