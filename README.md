@@ -128,6 +128,25 @@ For example, if you were to edit the example stream to select the stream as well
 
 The tap will write bookmarks to stdout which can be captured and passed as an optional `--state state.json` parameter to the tap for the next sync.
 
+## Error messages
+
+A MongoDB source can point at any host, so everything the server sends back is
+treated as untrusted input. Stitch reads the tap's stderr one line at a time and
+decides what a line is from its leading token, so the tap installs a logging
+filter that stops any value containing a line break from forging a `CRITICAL`
+error or an `INFO METRIC:` record.
+
+When the tap fails it logs a single `CRITICAL` line built from the exception
+class and, for `OperationFailure`, the numeric server error code — the server's
+own error text is never echoed, and the exception is not re-raised so that no
+traceback reaches stderr. Server-supplied values logged during discovery
+(version string, database and collection names, roles) additionally go through
+`tap_mongodb.error_messages.scrub`, which strips byte escapes and collapses
+whitespace.
+
+Use the numeric error code plus the job's logs to diagnose failures; the tap
+deliberately does not surface the raw server response.
+
 ## Supplemental MongoDB Info
 
 ### Local MongoDB Setup
