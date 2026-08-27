@@ -1,7 +1,7 @@
 # Changelog
 
 ## 3.3.1
-  * Stop reflecting MongoDB server responses in tenant-visible errors [#134](https://github.com/singer-io/tap-mongodb/pull/135)
+  * Stop reflecting MongoDB server responses in tenant-visible errors [#135](https://github.com/singer-io/tap-mongodb/pull/135)
 
 ## 3.3.0
   * Handle Non-finite values (NaN, Infinity) [#129](https://github.com/singer-io/tap-mongodb/pull/129)
