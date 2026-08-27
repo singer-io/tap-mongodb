@@ -10,6 +10,8 @@ from bson.codec_options import DatetimeConversion
 import singer
 from singer import metadata, metrics, utils
 
+from tap_mongodb.error_messages import (install_line_forgery_filter,
+                                        safe_error_message, scrub)
 import tap_mongodb.sync_strategies.common as common
 import tap_mongodb.sync_strategies.full_table as full_table
 import tap_mongodb.sync_strategies.oplog as oplog
@@ -105,7 +107,7 @@ def get_roles(client, config):
 
 def get_databases(client, config):
     roles = get_roles(client, config)
-    LOGGER.info('Roles: %s', roles)
+    LOGGER.info('Roles: %s', scrub(roles))
 
     can_read_all = len([r for r in roles if r['role'] in ROLES_WITH_ALL_DB_FIND_PRIVILEGES]) > 0
 
@@ -114,7 +116,7 @@ def get_databases(client, config):
     else:
         db_names = [r['db'] for r in roles if r['db'] not in IGNORE_DBS]
     db_names = list(set(db_names))  # Make sure each db is only in the list once
-    LOGGER.info('Datbases: %s', db_names)
+    LOGGER.info('Datbases: %s', scrub(db_names))
     return db_names
 
 
@@ -176,7 +178,7 @@ def do_discover(client, config):
                 continue
 
             LOGGER.info("Getting collection info for db: %s, collection: %s",
-                        db_name, collection_name)
+                        scrub(db_name), scrub(collection_name))
             streams.append(produce_collection_schema(collection))
 
     json.dump({'streams' : streams}, sys.stdout, indent=2)
@@ -381,7 +383,7 @@ def main_impl():
 
     LOGGER.info('Connected to MongoDB host: %s, version: %s',
                 config['host'],
-                client.server_info().get('version', 'unknown'))
+                scrub(client.server_info().get('version', 'unknown')))
 
     common.INCLUDE_SCHEMAS_IN_DESTINATION_STREAM_NAME = \
         (config.get('include_schemas_in_destination_stream_name') == 'true')
@@ -393,8 +395,17 @@ def main_impl():
         do_sync(client, args.catalog.to_dict(), state)
 
 def main():
+    # NB: Installed before anything is logged. Names, filters and error text
+    # coming back from the server are untrusted and Stitch reads the tap's
+    # stderr line by line, so no log record may span into a forged line.
+    install_line_forgery_filter()
+
     try:
         main_impl()
-    except Exception as exc:
-        LOGGER.critical(exc)
-        raise exc
+    except Exception as exc: # pylint: disable=broad-except
+        # NB: The message is never `str(exc)`. MongoDB error documents are
+        # untrusted input and Stitch surfaces CRITICAL lines to the source
+        # owner, so the raw exception is neither logged nor re-raised: letting
+        # it propagate would print an unscrubbed traceback to stderr.
+        LOGGER.critical(safe_error_message(exc))
+        sys.exit(1)
