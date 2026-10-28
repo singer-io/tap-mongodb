@@ -1,7 +1,7 @@
 # Changelog
 
-## 3.3.2
-  * Update pymongo to 4.18.2 to fix an out-of-bounds read when decoding BSON Binary values [#136](https://github.com/singer-io/tap-mongodb/pull/136)
+## 3.4.0
+  * Update pymongo to 4.18.3 to fix out-of-bounds reads when decoding BSON Binary and Regex values. The minimum supported MongoDB server version is now 4.4 [#136](https://github.com/singer-io/tap-mongodb/pull/136)
 
 ## 3.3.0
   * Handle Non-finite values (NaN, Infinity) [#129](https://github.com/singer-io/tap-mongodb/pull/129)
